@@ -1,0 +1,12 @@
+# Внутренние файлы — не публикуются
+.claude/
+CLAUDE.md
+PRODUCT.md
+DESIGN.md
+ИНСТРУКЦИЯ.md
+tests/
+tools/
+server/
+data/okruga-2022/
+build.sh
+.DS_Store
