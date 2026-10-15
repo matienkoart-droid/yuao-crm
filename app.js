@@ -53,18 +53,44 @@
     setTimeout(function () { t.classList.remove('in'); setTimeout(function () { t.remove(); }, 200); }, bad ? 5000 : 2500);
   }
 
+  // Запросы к серверу Google. Чтение повторяем до 3 раз при сбоях; запись — только если сервер точно её не получил.
+  var READ_ACTIONS = { bootstrap: 1, kmbList: 1, photos: 1, log: 1, backups: 1, ping: 1, exportAll: 1 };
+  function retryErr(msg, lost) { var e = new Error(msg); e.retry = true; e.lost = !!lost; return e; }
+  function callServer(req, attempt) {
+    var ctl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+    var timer = ctl && setTimeout(function () { ctl.abort(); }, 60000);
+    return fetch(CFG.API_URL, { method: 'POST', body: JSON.stringify(req), signal: ctl ? ctl.signal : undefined })
+      .then(function (r) {
+        if (!r.ok) throw retryErr('Сервер не отвечает (' + r.status + ')');
+        return r.text();
+      })
+      .then(function (t) {
+        var res;
+        try { res = JSON.parse(t); } catch (e) { throw retryErr('Сервер Google временно ответил ошибкой'); }
+        // Google по пути потерял запрос и вернул служебный ответ без данных — запрос не выполнялся, повтор безопасен
+        if (res && res.ok && !('data' in res) && req.action !== 'ping') throw retryErr('Сервер не получил запрос', true);
+        return res;
+      })
+      .catch(function (err) {
+        if (timer) clearTimeout(timer);
+        var network = err.name === 'AbortError' || err instanceof TypeError;
+        var canRetry = attempt < 3 && (err.lost || ((err.retry || network) && READ_ACTIONS[req.action]));
+        if (canRetry) return new Promise(function (ok) { setTimeout(ok, 1200 * attempt); }).then(function () { return callServer(req, attempt + 1); });
+        if (network) throw new Error(READ_ACTIONS[req.action] ? 'Нет связи с сервером. Проверьте интернет и попробуйте ещё раз.' : 'Нет связи с сервером — изменение могло не сохраниться. Проверьте и при необходимости повторите.');
+        throw err;
+      })
+      .then(function (res) { if (timer) clearTimeout(timer); return res; });
+  }
+
   function api(action, data) {
     var req = Object.assign({ action: action, token: S.token }, data || {});
     var p = DEMO
       ? new Promise(function (r) { setTimeout(function () { r(CRM.handle(demoStore, JSON.parse(JSON.stringify(req)))); }, 30); })
-      : fetch(CFG.API_URL, { method: 'POST', body: JSON.stringify(req) }).then(function (r) {
-        if (!r.ok) throw new Error('Сервер не отвечает (' + r.status + ')');
-        return r.json();
-      });
+      : callServer(req, 1);
     return p.then(function (res) {
-      if (!res.ok) {
-        if (res.error === 'AUTH' && action !== 'login') { logout(true); }
-        var e = new Error(res.message || 'Ошибка'); e.code = res.error; throw e;
+      if (!res || !res.ok) {
+        if (res && res.error === 'AUTH' && action !== 'login') { logout(true); }
+        var e = new Error((res && res.message) || 'Ошибка сервера'); e.code = res && res.error; throw e;
       }
       return res.data;
     });
@@ -178,15 +204,25 @@
     renderLogin(expired ? 'Сессия закончилась — войдите снова' : '');
   }
 
+  var loading = null;
   function load() {
-    if (!S.me) app.innerHTML = '<div class="loading">Загрузка данных…</div>';
-    return api('bootstrap').then(function (d) {
+    if (loading) return loading; // не запускать вторую загрузку, пока идёт первая
+    var first = !S.me;
+    if (first) app.innerHTML = '<div class="loading">Загрузка данных…</div>';
+    loading = api('bootstrap').then(function (d) {
+      if (!d || !d.me) throw new Error('Сервер вернул пустой ответ');
       S.me = d.me; S.okrugs = d.okrugs; S.plan = d.plan; S.users = d.users; S.credUrl = d.credUrl || '';
       S.candidates = d.candidates; S.events = d.events; S.media = d.media || []; S.interviews = d.interviews || []; S.stats = d.stats;
       if (!UI.month || campaignMonths().indexOf(UI.month) < 0) UI.month = defaultMonth();
       if (!UI.evF.month) UI.evF.month = curMonth();
-      render();
-    }).catch(function (e) { if (e.code !== 'AUTH') { app.innerHTML = '<div class="loading">Не удалось загрузить данные: ' + esc(e.message) + '<br><br><button class="btn" onclick="location.reload()">Повторить</button></div>'; } });
+      var y = window.scrollY, onMap = route() === 'map' && !first;
+      if (!onMap) { render(); window.scrollTo(0, y); } // карту не перерисовываем при фоновом обновлении
+    }).catch(function (e) {
+      if (e.code === 'AUTH') return;
+      if (!first) { toast('Не удалось обновить данные: ' + e.message, true); return; } // остаёмся на текущем экране
+      app.innerHTML = '<div class="loading">Не удалось загрузить данные: ' + esc(e.message) + '<br><br><button class="btn" onclick="location.reload()">Повторить</button></div>';
+    }).then(function () { loading = null; });
+    return loading;
   }
   function refresh() { return load(); }
 
@@ -1165,8 +1201,8 @@
     return out;
   }
 
-  function editUser(u) {
-    var isNew = !u.id, pw = isNew ? genPassword() : '';
+  function editUser(u, presetPw) {
+    var isNew = !u.id, pw = presetPw || (isNew ? genPassword() : '');
     var m = modal(isNew ? 'Новый доступ' : 'Доступ: ' + u.name,
       '<form id="uF"><label class="f"><span>Имя и фамилия</span><input class="input" name="name" value="' + esc(u.name) + '" required></label>' +
       '<div class="row2"><label class="f"><span>Роль</span><select class="input" name="role">' + Object.keys(CRM.ROLES).map(function (r) { return '<option value="' + r + '"' + (r === u.role ? ' selected' : '') + '>' + CRM.ROLES[r] + '</option>'; }).join('') + '</select></label>' +
@@ -1195,19 +1231,39 @@
         if (y) api('userDelete', { id: u.id }).then(function () { m.close(); toast('Удалено'); refresh(); }).catch(fail);
       });
     };
-    $('[data-s]', m.el).onclick = function (ev) {
-      var it = formData(f); it.id = u.id; busy(ev.target, true);
+    $('[data-s]', m.el).onclick = function () {
+      var it = formData(f); it.id = u.id;
+      it.login = String(it.login || '').trim().toLowerCase();
+      // Быстрая проверка на месте — чтобы не ждать сервер ради очевидных ошибок
+      var err = !/^[a-z0-9._-]{2,32}$/.test(it.login) ? 'Логин: 2–32 символа, латиница, цифры, точка, дефис'
+        : !String(it.name || '').trim() ? 'Укажите имя'
+        : S.users.some(function (x) { return x.login && x.login.toLowerCase() === it.login && x.id !== u.id; }) ? 'Такой логин уже занят'
+        : (isNew && !it.password) ? 'Задайте пароль'
+        : (it.password && String(it.password).length < 6) ? 'Пароль — минимум 6 символов' : '';
+      if (err) return toast(err, true);
+      m.close(); // окно закрывается сразу, сохранение идёт в фоне
+      var c = null, statusEl = null;
+      if (it.password) {
+        var text = 'CRM кампании ЮАО\nСайт: ' + location.origin + location.pathname + '\nЛогин: ' + it.login + '\nПароль: ' + it.password;
+        c = modal('Доступ для ' + it.name, '<p style="margin-top:0">Передайте эти данные лично. Логин и пароль также запишутся в Google Таблицу на лист «Логины и пароли».</p><div class="cred">' + esc(text) + '</div>' +
+          '<p class="sub" id="uStatus" style="margin:0">Сохраняем на сервере…</p>',
+          '<button class="btn" data-c>Закрыть</button><button class="btn primary" data-copy>Скопировать</button>');
+        statusEl = $('#uStatus', c.el);
+        $('[data-c]', c.el).onclick = c.close;
+        $('[data-copy]', c.el).onclick = function () { navigator.clipboard.writeText(text).then(function () { toast('Скопировано'); }, function () { toast('Выделите текст и скопируйте вручную', true); }); };
+      } else toast('Сохраняем…');
       api('userSave', { item: it }).then(function (saved) {
-        m.close();
-        if (it.password) {
-          var text = 'CRM кампании ЮАО\nСайт: ' + location.origin + location.pathname + '\nЛогин: ' + saved.login + '\nПароль: ' + it.password;
-          var c = modal('Доступ готов', '<p style="margin-top:0">Передайте эти данные <b>' + esc(saved.name) + '</b> лично. Логин и пароль также записаны в Google Таблицу на лист «Логины и пароли».</p><div class="cred">' + esc(text) + '</div>',
-            '<button class="btn" data-c>Закрыть</button><button class="btn primary" data-copy>Скопировать</button>');
-          $('[data-c]', c.el).onclick = c.close;
-          $('[data-copy]', c.el).onclick = function () { navigator.clipboard.writeText(text).then(function () { toast('Скопировано'); }, function () { toast('Выделите текст и скопируйте вручную', true); }); };
-        } else toast('Сохранено');
+        var i = S.users.findIndex(function (x) { return x.id === saved.id; });
+        if (i >= 0) S.users[i] = saved; else S.users.push(saved);
+        if (statusEl) { statusEl.textContent = 'Сохранено. Сотрудник уже может войти.'; statusEl.style.color = 'var(--ok-ink)'; } else toast('Сохранено');
+        if (route() === 'team') render();
         refresh();
-      }).catch(function (e) { busy(ev.target, false); fail(e); });
+      }).catch(function (e) {
+        if (statusEl) {
+          statusEl.innerHTML = '<span style="color:var(--bad-ink)">Не сохранилось: ' + esc(e.message) + '</span> <button class="btn sm" data-fix>Исправить</button>';
+          $('[data-fix]', c.el).onclick = function () { c.close(); editUser(Object.assign({}, u, it, { active: !!it.active }), it.password); };
+        } else { fail(e); editUser(Object.assign({}, u, it, { active: !!it.active })); }
+      });
     };
   }
 
