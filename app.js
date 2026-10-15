@@ -139,7 +139,7 @@
 
   /* ---------- иконки ---------- */
   // Иконки Tabler Icons (MIT), outline, stroke 1.75
-  var ICONS = {"eye": "<path d=\"M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0\"/><path d=\"M21 12c-2.4 4 -5.4 6 -9 6c-3.6 0 -6.6 -2 -9 -6c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6\"/>", "eyeoff": "<path d=\"M10.585 10.587a2 2 0 0 0 2.829 2.828\"/><path d=\"M16.681 16.673a8.717 8.717 0 0 1 -4.681 1.327c-3.6 0 -6.6 -2 -9 -6c1.272 -2.12 2.712 -3.678 4.32 -4.674m2.86 -1.146a9.055 9.055 0 0 1 1.82 -.18c3.6 0 6.6 2 9 6c-.666 1.11 -1.379 2.067 -2.138 2.87\"/><path d=\"M3 3l18 18\"/>", "uik": "<path d=\"M9 11l3 3l8 -8\"/><path d=\"M20 12v6a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2h9\"/>", "interviews": "<path d=\"M12 21h-6a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v4.5\"/><path d=\"M16 3v4\"/><path d=\"M8 3v4\"/><path d=\"M4 11h16\"/><path d=\"M19 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0\"/><path d=\"M22 22a2 2 0 0 0 -2 -2h-2a2 2 0 0 0 -2 2\"/>", "media": "<path d=\"M18 8a3 3 0 0 1 0 6\"/><path d=\"M10 8v11a1 1 0 0 1 -1 1h-1a1 1 0 0 1 -1 -1v-5\"/><path d=\"M12 8h0l4.524 -3.77a.9 .9 0 0 1 1.476 .692v12.156a.9 .9 0 0 1 -1.476 .692l-4.524 -3.77h-8a1 1 0 0 1 -1 -1v-4a1 1 0 0 1 1 -1h8\"/>", "link": "<path d=\"M12 6h-6a2 2 0 0 0 -2 2v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-6\"/><path d=\"M11 13l9 -9\"/><path d=\"M15 4h5v5\"/>", "usercheck": "<path d=\"M8 7a4 4 0 1 0 8 0a4 4 0 0 0 -8 0\"/><path d=\"M6 21v-2a4 4 0 0 1 4 -4h4\"/><path d=\"M15 19l2 2l4 -4\"/>", "dashboard": "<path d=\"M5 4h4a1 1 0 0 1 1 1v6a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1v-6a1 1 0 0 1 1 -1\"/><path d=\"M5 16h4a1 1 0 0 1 1 1v2a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1v-2a1 1 0 0 1 1 -1\"/><path d=\"M15 12h4a1 1 0 0 1 1 1v6a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1v-6a1 1 0 0 1 1 -1\"/><path d=\"M15 4h4a1 1 0 0 1 1 1v2a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1v-2a1 1 0 0 1 1 -1\"/>", "map": "<path d=\"M12 18.5l-3 -1.5l-6 3v-13l6 -3l6 3l6 -3v7.5\"/><path d=\"M9 4v13\"/><path d=\"M15 7v5.5\"/><path d=\"M21.121 20.121a3 3 0 1 0 -4.242 0c.418 .419 1.125 1.045 2.121 1.879c1.051 -.89 1.759 -1.516 2.121 -1.879z\"/><path d=\"M19 18v.01\"/>", "okrugs": "<path d=\"M13 5h8\"/><path d=\"M13 9h5\"/><path d=\"M13 15h8\"/><path d=\"M13 19h5\"/><path d=\"M3 4m0 1a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1z\"/><path d=\"M3 14m0 1a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1z\"/>", "candidates": "<path d=\"M9 7m-4 0a4 4 0 1 0 8 0a4 4 0 1 0 -8 0\"/><path d=\"M3 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2\"/><path d=\"M16 3.13a4 4 0 0 1 0 7.75\"/><path d=\"M21 21v-2a4 4 0 0 0 -3 -3.85\"/>", "events": "<path d=\"M4 5m0 2a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2z\"/><path d=\"M16 3l0 4\"/><path d=\"M8 3l0 4\"/><path d=\"M4 11l16 0\"/><path d=\"M8 15h2v2h-2z\"/>", "kmb": "<path d=\"M20 6v12a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2z\"/><path d=\"M10 16h6\"/><path d=\"M13 11m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0\"/><path d=\"M4 8h3\"/><path d=\"M4 12h3\"/><path d=\"M4 16h3\"/>", "team": "<path d=\"M10 13a2 2 0 1 0 4 0a2 2 0 0 0 -4 0\"/><path d=\"M8 21v-1a2 2 0 0 1 2 -2h4a2 2 0 0 1 2 2v1\"/><path d=\"M15 5a2 2 0 1 0 4 0a2 2 0 0 0 -4 0\"/><path d=\"M17 10h2a2 2 0 0 1 2 2v1\"/><path d=\"M5 5a2 2 0 1 0 4 0a2 2 0 0 0 -4 0\"/><path d=\"M3 13v-1a2 2 0 0 1 2 -2h2\"/>", "plan": "<path d=\"M3 13a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v6a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1z\"/><path d=\"M15 9a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v10a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1z\"/><path d=\"M9 5a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v14a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1z\"/><path d=\"M4 20h14\"/>", "backup": "<path d=\"M4 6c0 1.657 3.582 3 8 3s8 -1.343 8 -3s-3.582 -3 -8 -3s-8 1.343 -8 3\"/><path d=\"M4 6v6c0 1.657 3.582 3 8 3c1.118 0 2.183 -.086 3.15 -.241\"/><path d=\"M20 12v-6\"/><path d=\"M4 12v6c0 1.657 3.582 3 8 3c.157 0 .312 -.002 .466 -.005\"/><path d=\"M16 19h6\"/><path d=\"M19 16l3 3l-3 3\"/>", "profile": "<path d=\"M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0\"/><path d=\"M12 10m-3 0a3 3 0 1 0 6 0a3 3 0 1 0 -6 0\"/><path d=\"M6.168 18.849a4 4 0 0 1 3.832 -2.849h4a4 4 0 0 1 3.834 2.855\"/>", "menu": "<path d=\"M4 6l16 0\"/><path d=\"M4 12l16 0\"/><path d=\"M4 18l16 0\"/>", "refresh": "<path d=\"M20 11a8.1 8.1 0 0 0 -15.5 -2m-.5 -4v4h4\"/><path d=\"M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4\"/>", "x": "<path d=\"M18 6l-12 12\"/><path d=\"M6 6l12 12\"/>", "check": "<path d=\"M5 12l5 5l10 -10\"/>", "left": "<path d=\"M15 6l-6 6l6 6\"/>", "right": "<path d=\"M9 6l6 6l-6 6\"/>", "plus": "<path d=\"M12 5l0 14\"/><path d=\"M5 12l14 0\"/>", "upload": "<path d=\"M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2\"/><path d=\"M7 9l5 -5l5 5\"/><path d=\"M12 4l0 12\"/>", "download": "<path d=\"M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2\"/><path d=\"M7 11l5 5l5 -5\"/><path d=\"M12 4l0 12\"/>", "search": "<path d=\"M10 10m-7 0a7 7 0 1 0 14 0a7 7 0 1 0 -14 0\"/><path d=\"M21 21l-6 -6\"/>", "logout": "<path d=\"M14 8v-2a2 2 0 0 0 -2 -2h-7a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h7a2 2 0 0 0 2 -2v-2\"/><path d=\"M9 12h12l-3 -3\"/><path d=\"M18 15l3 -3\"/>"};
+  var ICONS = {"calplus": "<path d=\"M12.5 21h-6.5a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v5\"/><path d=\"M16 3v4\"/><path d=\"M8 3v4\"/><path d=\"M4 11h16\"/><path d=\"M16 19h6\"/><path d=\"M19 16v6\"/>", "eye": "<path d=\"M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0\"/><path d=\"M21 12c-2.4 4 -5.4 6 -9 6c-3.6 0 -6.6 -2 -9 -6c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6\"/>", "eyeoff": "<path d=\"M10.585 10.587a2 2 0 0 0 2.829 2.828\"/><path d=\"M16.681 16.673a8.717 8.717 0 0 1 -4.681 1.327c-3.6 0 -6.6 -2 -9 -6c1.272 -2.12 2.712 -3.678 4.32 -4.674m2.86 -1.146a9.055 9.055 0 0 1 1.82 -.18c3.6 0 6.6 2 9 6c-.666 1.11 -1.379 2.067 -2.138 2.87\"/><path d=\"M3 3l18 18\"/>", "uik": "<path d=\"M9 11l3 3l8 -8\"/><path d=\"M20 12v6a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2h9\"/>", "interviews": "<path d=\"M12 21h-6a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v4.5\"/><path d=\"M16 3v4\"/><path d=\"M8 3v4\"/><path d=\"M4 11h16\"/><path d=\"M19 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0\"/><path d=\"M22 22a2 2 0 0 0 -2 -2h-2a2 2 0 0 0 -2 2\"/>", "media": "<path d=\"M18 8a3 3 0 0 1 0 6\"/><path d=\"M10 8v11a1 1 0 0 1 -1 1h-1a1 1 0 0 1 -1 -1v-5\"/><path d=\"M12 8h0l4.524 -3.77a.9 .9 0 0 1 1.476 .692v12.156a.9 .9 0 0 1 -1.476 .692l-4.524 -3.77h-8a1 1 0 0 1 -1 -1v-4a1 1 0 0 1 1 -1h8\"/>", "link": "<path d=\"M12 6h-6a2 2 0 0 0 -2 2v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-6\"/><path d=\"M11 13l9 -9\"/><path d=\"M15 4h5v5\"/>", "usercheck": "<path d=\"M8 7a4 4 0 1 0 8 0a4 4 0 0 0 -8 0\"/><path d=\"M6 21v-2a4 4 0 0 1 4 -4h4\"/><path d=\"M15 19l2 2l4 -4\"/>", "dashboard": "<path d=\"M5 4h4a1 1 0 0 1 1 1v6a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1v-6a1 1 0 0 1 1 -1\"/><path d=\"M5 16h4a1 1 0 0 1 1 1v2a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1v-2a1 1 0 0 1 1 -1\"/><path d=\"M15 12h4a1 1 0 0 1 1 1v6a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1v-6a1 1 0 0 1 1 -1\"/><path d=\"M15 4h4a1 1 0 0 1 1 1v2a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1v-2a1 1 0 0 1 1 -1\"/>", "map": "<path d=\"M12 18.5l-3 -1.5l-6 3v-13l6 -3l6 3l6 -3v7.5\"/><path d=\"M9 4v13\"/><path d=\"M15 7v5.5\"/><path d=\"M21.121 20.121a3 3 0 1 0 -4.242 0c.418 .419 1.125 1.045 2.121 1.879c1.051 -.89 1.759 -1.516 2.121 -1.879z\"/><path d=\"M19 18v.01\"/>", "okrugs": "<path d=\"M13 5h8\"/><path d=\"M13 9h5\"/><path d=\"M13 15h8\"/><path d=\"M13 19h5\"/><path d=\"M3 4m0 1a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1z\"/><path d=\"M3 14m0 1a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1z\"/>", "candidates": "<path d=\"M9 7m-4 0a4 4 0 1 0 8 0a4 4 0 1 0 -8 0\"/><path d=\"M3 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2\"/><path d=\"M16 3.13a4 4 0 0 1 0 7.75\"/><path d=\"M21 21v-2a4 4 0 0 0 -3 -3.85\"/>", "events": "<path d=\"M4 5m0 2a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2z\"/><path d=\"M16 3l0 4\"/><path d=\"M8 3l0 4\"/><path d=\"M4 11l16 0\"/><path d=\"M8 15h2v2h-2z\"/>", "kmb": "<path d=\"M20 6v12a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2z\"/><path d=\"M10 16h6\"/><path d=\"M13 11m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0\"/><path d=\"M4 8h3\"/><path d=\"M4 12h3\"/><path d=\"M4 16h3\"/>", "team": "<path d=\"M10 13a2 2 0 1 0 4 0a2 2 0 0 0 -4 0\"/><path d=\"M8 21v-1a2 2 0 0 1 2 -2h4a2 2 0 0 1 2 2v1\"/><path d=\"M15 5a2 2 0 1 0 4 0a2 2 0 0 0 -4 0\"/><path d=\"M17 10h2a2 2 0 0 1 2 2v1\"/><path d=\"M5 5a2 2 0 1 0 4 0a2 2 0 0 0 -4 0\"/><path d=\"M3 13v-1a2 2 0 0 1 2 -2h2\"/>", "plan": "<path d=\"M3 13a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v6a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1z\"/><path d=\"M15 9a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v10a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1z\"/><path d=\"M9 5a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v14a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1z\"/><path d=\"M4 20h14\"/>", "backup": "<path d=\"M4 6c0 1.657 3.582 3 8 3s8 -1.343 8 -3s-3.582 -3 -8 -3s-8 1.343 -8 3\"/><path d=\"M4 6v6c0 1.657 3.582 3 8 3c1.118 0 2.183 -.086 3.15 -.241\"/><path d=\"M20 12v-6\"/><path d=\"M4 12v6c0 1.657 3.582 3 8 3c.157 0 .312 -.002 .466 -.005\"/><path d=\"M16 19h6\"/><path d=\"M19 16l3 3l-3 3\"/>", "profile": "<path d=\"M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0\"/><path d=\"M12 10m-3 0a3 3 0 1 0 6 0a3 3 0 1 0 -6 0\"/><path d=\"M6.168 18.849a4 4 0 0 1 3.832 -2.849h4a4 4 0 0 1 3.834 2.855\"/>", "menu": "<path d=\"M4 6l16 0\"/><path d=\"M4 12l16 0\"/><path d=\"M4 18l16 0\"/>", "refresh": "<path d=\"M20 11a8.1 8.1 0 0 0 -15.5 -2m-.5 -4v4h4\"/><path d=\"M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4\"/>", "x": "<path d=\"M18 6l-12 12\"/><path d=\"M6 6l12 12\"/>", "check": "<path d=\"M5 12l5 5l10 -10\"/>", "left": "<path d=\"M15 6l-6 6l6 6\"/>", "right": "<path d=\"M9 6l6 6l-6 6\"/>", "plus": "<path d=\"M12 5l0 14\"/><path d=\"M5 12l14 0\"/>", "upload": "<path d=\"M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2\"/><path d=\"M7 9l5 -5l5 5\"/><path d=\"M12 4l0 12\"/>", "download": "<path d=\"M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2\"/><path d=\"M7 11l5 5l5 -5\"/><path d=\"M12 4l0 12\"/>", "search": "<path d=\"M10 10m-7 0a7 7 0 1 0 14 0a7 7 0 1 0 -14 0\"/><path d=\"M21 21l-6 -6\"/>", "logout": "<path d=\"M14 8v-2a2 2 0 0 0 -2 -2h-7a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h7a2 2 0 0 0 2 -2v-2\"/><path d=\"M9 12h12l-3 -3\"/><path d=\"M18 15l3 -3\"/>"};
   function icon(n) { return '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + ICONS[n] + '</svg>'; }
 
   var VIEWS = [
@@ -663,6 +663,52 @@
   }
 
 
+
+  /* ================= КАЛЕНДАРЬ iPhone (.ics) ================= */
+  // Стандартный файл встречи: iPhone открывает его в приложении «Календарь», Mac — в Календаре macOS.
+  function icsEsc(t) { return String(t == null ? '' : t).replace(/\\/g, '\\\\').replace(/\n/g, '\\n').replace(/([,;])/g, '\\$1'); }
+  function icsFold(line) { var out = [], i = 0; while (line.length - i > 60) { out.push((i ? ' ' : '') + line.slice(i, i + 60)); i += 60; } out.push((i ? ' ' : '') + line.slice(i)); return out.join('\r\n'); }
+  function icsUtc(d) { return d.toISOString().replace(/[-:]/g, '').replace(/\.\d+/, ''); }
+  // ev: { uid, title, date: 'YYYY-MM-DD', time: 'HH:MM' | '', minutes, place, desc }
+  function addToCalendar(ev) {
+    var L = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//CRM UAO 2027//RU', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH', 'BEGIN:VEVENT',
+      'UID:' + (ev.uid || Date.now()) + '@crm-yuao', 'DTSTAMP:' + icsUtc(new Date())];
+    var p = ev.date.split('-').map(Number);
+    if (ev.time) {
+      var t = ev.time.split(':').map(Number);
+      var start = new Date(Date.UTC(p[0], p[1] - 1, p[2], t[0] - 3, t[1] || 0)); // московское время = UTC+3
+      L.push('DTSTART:' + icsUtc(start), 'DTEND:' + icsUtc(new Date(start.getTime() + (ev.minutes || 60) * 60000)));
+      L.push('BEGIN:VALARM', 'ACTION:DISPLAY', 'DESCRIPTION:' + icsEsc(ev.title), 'TRIGGER:-PT1H', 'END:VALARM');
+    } else {
+      var next = new Date(Date.UTC(p[0], p[1] - 1, p[2] + 1)).toISOString().slice(0, 10).replace(/-/g, '');
+      L.push('DTSTART;VALUE=DATE:' + ev.date.replace(/-/g, ''), 'DTEND;VALUE=DATE:' + next);
+      L.push('BEGIN:VALARM', 'ACTION:DISPLAY', 'DESCRIPTION:' + icsEsc(ev.title), 'TRIGGER:-PT6H', 'END:VALARM');
+    }
+    L.push('SUMMARY:' + icsEsc(ev.title));
+    if (ev.place) L.push('LOCATION:' + icsEsc(ev.place));
+    if (ev.desc) L.push('DESCRIPTION:' + icsEsc(ev.desc));
+    L.push('END:VEVENT', 'END:VCALENDAR');
+    var ics = L.map(icsFold).join('\r\n') + '\r\n';
+    var ios = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    if (ios) { location.href = 'data:text/calendar;charset=utf-8,' + encodeURIComponent(ics); return; }
+    download((ev.title || 'встреча').replace(/[\\/:*?"<>|]/g, '').slice(0, 60) + '.ics', ics, 'text/calendar;charset=utf-8');
+  }
+  function calInterview(i) {
+    return { uid: 'iv-' + i.id, title: 'Встреча с кандидатом: ' + i.fio, date: i.date, time: i.time, minutes: 60, place: i.place,
+      desc: [okrugName(i.okrug), i.phone ? 'Телефон: ' + i.phone : '', i.interviewer ? 'Проводит: ' + i.interviewer : '', i.comment].filter(Boolean).join('\n') };
+  }
+  function calEvent(e) {
+    return { uid: 'ev-' + e.id, title: (CRM.EVENT_TYPES[e.type] || 'Мероприятие') + (e.title ? ': ' + e.title : '') + ' (' + okrugName(e.okrug) + ')', date: e.date, time: '', place: e.address,
+      desc: [okrugName(e.okrug), e.notes].filter(Boolean).join('\n') };
+  }
+  // После создания встречи — предложить сразу добавить её в календарь
+  function offerCalendar(ev) {
+    var m = modal('Сохранено', '<p style="margin:0">Добавить в «Календарь» на телефоне? Придёт напоминание' + (ev.time ? ' за час до встречи.' : ' накануне вечером.') + '</p>',
+      '<button class="btn" data-c>Не нужно</button><button class="btn primary" data-cal>' + icon('calplus') + 'Добавить в календарь</button>');
+    $('[data-c]', m.el).onclick = m.close;
+    $('[data-cal]', m.el).onclick = function () { m.close(); addToCalendar(ev); };
+  }
+
   /* ================= ВСТРЕЧИ С КАНДИДАТАМИ ================= */
   var IV_FILTERS = [['upcoming', 'Предстоящие'], ['await', 'Ждут отметки'], ['pass', 'Проходят'], ['fail', 'Не проходят'], ['noshow', 'Не пришли'], ['', 'Все']];
   function ivState(i) {
@@ -699,6 +745,7 @@
           if (ed && st === 'await' && i.attended === 'yes') act = '<button class="btn sm" data-iv="' + i.id + '" data-set="verdict:pass">Проходит</button> <button class="btn sm danger" data-iv="' + i.id + '" data-set="verdict:fail">Не проходит</button>';
           if (ed && st === 'pass' && !i.candidateId) act = '<button class="btn sm primary" data-tocand="' + i.id + '">' + icon('usercheck') + 'В кандидаты</button>';
           if (st === 'pass' && i.candidateId) act = '<span class="sub">в списке кандидатов</span>';
+          if (st === 'upcoming') act = '<button class="btn sm" data-cal="' + i.id + '" title="Добавить в календарь телефона">' + icon('calplus') + 'В календарь</button>';
           return '<tr class="click" data-i="' + i.id + '"><td class="nowrap num">' + esc(i.time || '') + '</td><td><b>' + esc(i.fio) + '</b>' + (i.phone ? '<div class="sub">' + esc(i.phone) + '</div>' : '') + '</td>' +
             '<td>' + esc(okrugName(i.okrug)) + (i.place ? '<div class="sub">' + esc(i.place) + '</div>' : '') + '</td><td>' + ivPill(i) + (i.interviewer ? '<div class="sub">проводит: ' + esc(i.interviewer) + '</div>' : '') + '</td><td class="nowrap">' + act + '</td></tr>';
         }).join('');
@@ -724,6 +771,7 @@
         api('save', { entity: 'interviews', item: i }).then(function () { toast('Отмечено'); refresh(); }).catch(function (e) { b.disabled = false; fail(e); });
       };
     });
+    $all('[data-cal]', box).forEach(function (b) { b.onclick = function () { addToCalendar(calInterview(S.interviews.filter(function (x) { return x.id === b.dataset.cal; })[0])); }; });
     $all('[data-tocand]', box).forEach(function (b) { b.onclick = function () { ivToCandidate(S.interviews.filter(function (x) { return x.id === b.dataset.tocand; })[0], b); }; });
   }
 
@@ -748,8 +796,10 @@
       '<label class="f"><span>Итог по критериям</span><select class="input" name="verdict"><option value="">не оценён</option><option value="pass"' + (i.verdict === 'pass' ? ' selected' : '') + '>проходит</option><option value="fail"' + (i.verdict === 'fail' ? ' selected' : '') + '>не проходит</option></select></label></div>' +
       '<label class="f"><span>Комментарий: почему проходит или нет</span><textarea class="input" name="comment" rows="4">' + esc(i.comment) + '</textarea></label>' +
       '<input type="hidden" name="candidateId" value="' + esc(i.candidateId) + '"></form>',
-      ro ? '<button class="btn" data-c>Закрыть</button>' : (i.id ? '<button class="btn danger left" data-d>Удалить</button>' : '') + '<button class="btn" data-c>Отмена</button><button class="btn primary" data-s>Сохранить</button>');
+      (i.id ? '<button class="btn' + (ro ? '' : '') + '" data-cal>' + icon('calplus') + 'В календарь</button>' : '') +
+      (ro ? '<button class="btn" data-c>Закрыть</button>' : (i.id ? '<button class="btn danger left" data-d>Удалить</button>' : '') + '<button class="btn" data-c>Отмена</button><button class="btn primary" data-s>Сохранить</button>'));
     var f = $('#iF', m.el);
+    var cb = $('[data-cal]', m.el); if (cb) cb.onclick = function () { addToCalendar(calInterview(Object.assign({}, i, formData(f)))); };
     if (ro) $all('input,select,textarea', m.el).forEach(function (el) { el.disabled = true; });
     var sync = function () { f.verdict.disabled = ro || f.attended.value !== 'yes'; if (f.attended.value !== 'yes') f.verdict.value = ''; };
     f.attended.onchange = sync; sync();
@@ -759,7 +809,7 @@
     var sv = $('[data-s]', m.el);
     if (sv) sv.onclick = function () {
       var it = formData(f); it.id = i.id; busy(sv, true);
-      api('save', { entity: 'interviews', item: it }).then(function () { m.close(); toast('Сохранено'); refresh(); }).catch(function (e) { busy(sv, false); fail(e); });
+      api('save', { entity: 'interviews', item: it }).then(function (rec) { m.close(); refresh(); if (!i.id) offerCalendar(calInterview(rec)); else toast('Сохранено'); }).catch(function (e) { busy(sv, false); fail(e); });
     };
   }
 
@@ -945,9 +995,11 @@
       '<label class="f"><span>Собрано контактов</span><input class="input" name="contacts" type="number" min="0" value="' + esc(e.contacts) + '"></label></div>' +
       '<label class="f"><span>Заметки, итоги</span><textarea class="input" name="notes">' + esc(e.notes) + '</textarea></label>' +
       '<p class="sub" style="margin:0">План: встреча ≈ 15 контактов, акция ≈ 10. Сами контакты вносите в раздел КМБ — в план идут именно они.</p></form>',
-      ro ? '<button class="btn" data-c>Закрыть</button>' : (e.id ? '<button class="btn danger left" data-d>Удалить</button>' : '') + '<button class="btn" data-c>Отмена</button><button class="btn primary" data-s>Сохранить</button>');
+      (e.id ? '<button class="btn" data-cal>' + icon('calplus') + 'В календарь</button>' : '') +
+      (ro ? '<button class="btn" data-c>Закрыть</button>' : (e.id ? '<button class="btn danger left" data-d>Удалить</button>' : '') + '<button class="btn" data-c>Отмена</button><button class="btn primary" data-s>Сохранить</button>'));
     if (ro) $all('input,select,textarea', m.el).forEach(function (el) { el.disabled = true; });
     $('[data-c]', m.el).onclick = m.close;
+    var cb = $('[data-cal]', m.el); if (cb) cb.onclick = function () { addToCalendar(calEvent(Object.assign({}, e, formData($('#eF', m.el))))); };
     var d = $('[data-d]', m.el);
     if (d) d.onclick = function () {
       confirmBox('Удалить мероприятие?', 'Удалить').then(function (y) {
@@ -957,7 +1009,7 @@
     var s = $('[data-s]', m.el);
     if (s) s.onclick = function () {
       var it = formData($('#eF', m.el)); it.id = e.id; busy(s, true);
-      api('save', { entity: 'events', item: it }).then(function () { m.close(); toast('Сохранено'); refresh(); }).catch(function (er) { busy(s, false); fail(er); });
+      api('save', { entity: 'events', item: it }).then(function (rec) { m.close(); refresh(); if (!e.id && rec.status !== 'done') offerCalendar(calEvent(rec)); else toast('Сохранено'); }).catch(function (er) { busy(s, false); fail(er); });
     };
   }
 
