@@ -551,7 +551,7 @@ var CRM = (function () {
 
   return {
     VERSION: VERSION, CAMPAIGN: CAMPAIGN, MEDIA_KINDS: MEDIA_KINDS, NETWORKS: NETWORKS, MEDIA_PLAN: MEDIA_PLAN, SCHEMA: SCHEMA, ROLES: ROLES, ZONES: ZONES, CAND_STATUSES: CAND_STATUSES, EVENT_TYPES: EVENT_TYPES,
-    CRED: CRED, credWrite: credWrite, defaultOkrugs: defaultOkrugs, defaultPlan: defaultPlan, sha256: sha256, _hash: hashPassword, handle: handle, createAdmin: createAdmin, seed: seed
+    CRED: CRED, credWrite: credWrite, defaultOkrugs: defaultOkrugs, defaultPlan: defaultPlan, sha256: sha256, _hash: hashPassword, handle: handle, auth: auth, createAdmin: createAdmin, seed: seed
   };
 })();
 

@@ -690,7 +690,14 @@
     L.push('END:VEVENT', 'END:VCALENDAR');
     var ics = L.map(icsFold).join('\r\n') + '\r\n';
     var ios = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-    if (ios) { location.href = 'data:text/calendar;charset=utf-8,' + encodeURIComponent(ics); return; }
+    if (ios) {
+      // iPhone: файл отдаёт наш сервер по обычной https-ссылке — Календарь открывается из Safari, Chrome, Яндекса и мессенджеров
+      if (!DEMO && S.token) {
+        var b64 = btoa(unescape(encodeURIComponent(ics))).replace(/\+/g, '-').replace(/\//g, '_');
+        location.href = CFG.API_URL + '?t=' + encodeURIComponent(S.token) + '&ics=' + encodeURIComponent(b64);
+      } else location.href = 'data:text/calendar;charset=utf-8,' + encodeURIComponent(ics);
+      return;
+    }
     download((ev.title || 'встреча').replace(/[\\/:*?"<>|]/g, '').slice(0, 60) + '.ics', ics, 'text/calendar;charset=utf-8');
   }
   function calInterview(i) {
