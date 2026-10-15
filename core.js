@@ -21,8 +21,11 @@ var CRM = (function () {
     Media: ['id', 'okrug', 'kind', 'network', 'title', 'url', 'subscribers', 'candidateId', 'owner', 'status', 'started', 'notes', 'created', 'createdBy', 'updated'],
     Interviews: ['id', 'okrug', 'fio', 'phone', 'date', 'time', 'place', 'interviewer', 'attended', 'verdict', 'comment', 'candidateId', 'created', 'createdBy', 'updated'],
     Plan: ['month', 'meetings', 'actions', 'kmb'],
-    Log: ['ts', 'user', 'action', 'details']
+    Log: ['ts', 'user', 'action', 'details'],
+    // Лист для руководителя: открытые логины и пароли, которые он выдал. Сайт его никому не отдаёт.
+    'Логины и пароли': ['Логин', 'Пароль', 'Имя', 'Роль', 'Зона или округ', 'Телефон', 'Доступ', 'Изменено', 'id']
   };
+  var CRED = 'Логины и пароли';
 
   var ROLES = { admin: 'Руководитель', coord: 'Координатор', intern: 'Стажёр', member: 'Участник команды' };
 
@@ -388,12 +391,26 @@ var CRM = (function () {
       media: S.rows('Media'),
       interviews: me.role === 'member' ? [] : S.rows('Interviews').filter(function (i) { return sc[i.okrug]; }),
       stats: stats(S),
-      server: S.kind
+      server: S.kind,
+      credUrl: full && S.credUrl ? S.credUrl() : ''
     };
   }
 
   /* ---------- пользователи (только руководитель) ---------- */
   function needAdmin(me) { if (me.role !== 'admin') throw fail('Доступно только руководителю', 'FORBIDDEN'); }
+
+  // Строка в листе «Логины и пароли»; password === null — оставить прежний пароль
+  function credWrite(S, rec, password, note) {
+    var old = S.rows(CRED).filter(function (r) { return r.id === rec.id; })[0];
+    S.removeWhere(CRED, function (r) { return r.id === rec.id; });
+    var o = rec.okrug && okrugMap(S)[rec.okrug];
+    S.insert(CRED, {
+      'Логин': rec.login, 'Пароль': password != null ? password : (old ? old['Пароль'] : ''), 'Имя': rec.name, 'Роль': ROLES[rec.role] || rec.role,
+      'Зона или округ': rec.role === 'coord' ? 'Зона ' + rec.zone + ' (' + ZONES[rec.zone] + ')' : o ? o.name : 'Весь ЮАО',
+      'Телефон': rec.phone, 'Доступ': truthy(rec.active) ? 'включён' : 'отключён',
+      'Изменено': nowMsk().replace('T', ' ').slice(0, 16) + (note ? ', ' + note : ''), id: rec.id
+    });
+  }
 
   function userSave(S, me, req) {
     needAdmin(me);
@@ -420,6 +437,7 @@ var CRM = (function () {
       if (u) S.removeWhere('Sessions', function (s) { return s.userId === rec.id; });
     } else if (!u) throw fail('Задайте пароль');
     if (u) S.update('Users', rec); else S.insert('Users', rec);
+    credWrite(S, rec, it.password ? String(it.password) : null, it.password ? (u ? 'пароль сброшен' : 'доступ выдан') : 'данные изменены');
     if (!rec.active) S.removeWhere('Sessions', function (s) { return s.userId === rec.id; });
     log(S, me, u ? 'edit user' : 'add user', rec.login + (it.password ? ' (пароль задан)' : ''));
     return publicUser(rec, true);
@@ -431,6 +449,7 @@ var CRM = (function () {
     var u = S.rows('Users').filter(function (x) { return x.id === req.id; })[0];
     if (!u) return { removed: 0 };
     S.remove('Users', u.id);
+    S.removeWhere(CRED, function (r) { return r.id === u.id; });
     S.removeWhere('Sessions', function (s) { return s.userId === u.id; });
     log(S, me, 'delete user', u.login);
     return { removed: 1 };
@@ -441,6 +460,7 @@ var CRM = (function () {
     if (String(req.password || '').length < 6) throw fail('Новый пароль — минимум 6 символов');
     me.salt = S.uuid(); me.hash = hashPassword(me.salt, String(req.password));
     S.update('Users', me);
+    credWrite(S, me, 'сменён самим сотрудником — знает только он', 'пароль сменён в профиле');
     S.removeWhere('Sessions', function (s) { return s.userId === me.id && s.token !== req.token; });
     log(S, me, 'change password', '');
     return { changed: true };
@@ -474,7 +494,7 @@ var CRM = (function () {
   function exportAll(S, me) {
     needAdmin(me);
     var sheets = {};
-    Object.keys(SCHEMA).forEach(function (n) { if (n !== 'Sessions') sheets[n] = S.rows(n); });
+    Object.keys(SCHEMA).forEach(function (n) { if (n !== 'Sessions' && n !== CRED) sheets[n] = S.rows(n); });
     log(S, me, 'export', '');
     return { format: 'crm-yuao', version: VERSION, exported: nowMsk(), sheets: sheets };
   }
@@ -485,7 +505,7 @@ var CRM = (function () {
     if (!d || d.format !== 'crm-yuao' || !d.sheets) throw fail('Это не файл резервной копии CRM');
     if (!(d.sheets.Users || []).some(function (u) { return u.role === 'admin' && truthy(u.active); })) throw fail('В копии нет ни одного активного руководителя — восстановление остановлено');
     Object.keys(SCHEMA).forEach(function (n) {
-      if (n === 'Sessions' || !d.sheets[n]) return;
+      if (n === 'Sessions' || n === CRED || !d.sheets[n]) return;
       S.replaceAll(n, d.sheets[n].map(function (r) { return pick(r, SCHEMA[n]); }));
     });
     S.replaceAll('Sessions', []);
@@ -525,12 +545,13 @@ var CRM = (function () {
     var salt = S.uuid();
     var u = { id: S.uuid(), login: login, name: name || 'Руководитель кампании', role: 'admin', zone: '', okrug: '', phone: '', active: '1', salt: salt, hash: hashPassword(salt, password), created: nowMsk(), lastLogin: '' };
     S.insert('Users', u);
+    credWrite(S, u, password, 'создан при запуске');
     return u;
   }
 
   return {
     VERSION: VERSION, CAMPAIGN: CAMPAIGN, MEDIA_KINDS: MEDIA_KINDS, NETWORKS: NETWORKS, MEDIA_PLAN: MEDIA_PLAN, SCHEMA: SCHEMA, ROLES: ROLES, ZONES: ZONES, CAND_STATUSES: CAND_STATUSES, EVENT_TYPES: EVENT_TYPES,
-    defaultOkrugs: defaultOkrugs, defaultPlan: defaultPlan, sha256: sha256, _hash: hashPassword, handle: handle, createAdmin: createAdmin, seed: seed
+    CRED: CRED, credWrite: credWrite, defaultOkrugs: defaultOkrugs, defaultPlan: defaultPlan, sha256: sha256, _hash: hashPassword, handle: handle, createAdmin: createAdmin, seed: seed
   };
 })();
 

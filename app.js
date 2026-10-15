@@ -181,7 +181,7 @@
   function load() {
     if (!S.me) app.innerHTML = '<div class="loading">Загрузка данных…</div>';
     return api('bootstrap').then(function (d) {
-      S.me = d.me; S.okrugs = d.okrugs; S.plan = d.plan; S.users = d.users;
+      S.me = d.me; S.okrugs = d.okrugs; S.plan = d.plan; S.users = d.users; S.credUrl = d.credUrl || '';
       S.candidates = d.candidates; S.events = d.events; S.media = d.media || []; S.interviews = d.interviews || []; S.stats = d.stats;
       if (!UI.month || campaignMonths().indexOf(UI.month) < 0) UI.month = defaultMonth();
       if (!UI.evF.month) UI.evF.month = curMonth();
@@ -1083,7 +1083,9 @@
     var place = function (u) { return u.role === 'coord' ? u.zone + ' · ' + CRM.ZONES[u.zone] : u.okrug ? okrugName(u.okrug) : 'Весь ЮАО'; };
     var cnt = function (r) { return S.users.filter(function (u) { return u.role === r && u.active; }).length; };
     box.innerHTML = '<div class="head"><div><h1>Команда</h1><div class="sub">Координаторов: ' + cnt('coord') + ' из 8 · стажёров: ' + cnt('intern') + ' из 33 · участников: ' + cnt('member') + '</div></div><div class="tools">' +
+      (adm && S.credUrl ? '<a class="btn" href="' + esc(S.credUrl) + '" target="_blank" rel="noopener">' + icon('link') + 'Все логины и пароли</a>' : '') +
       (adm ? '<button class="btn primary" id="uAdd">' + icon('plus') + 'Выдать доступ</button>' : '') + '</div></div>' +
+      (adm ? '<p class="sub" style="margin:0 0 var(--s3)">Каждый выданный логин и пароль записывается в Google Таблицу на лист «Логины и пароли» — его видите только вы. Если сотрудник сменит пароль сам, там будет пометка.</p>' : '') +
       '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Имя</th><th>Роль</th><th>Зона / округ</th><th>Телефон</th>' + (adm ? '<th>Логин</th><th>Последний вход</th>' : '') + '</tr></thead><tbody>' +
       list.map(function (u) {
         return '<tr' + (adm ? ' class="click" data-u="' + u.id + '"' : '') + (u.active ? '' : ' style="opacity:.5"') + '><td><b>' + esc(u.name) + '</b>' + (u.active ? '' : ' <span class="pill">отключён</span>') + '</td><td>' + CRM.ROLES[u.role] + '</td><td>' + esc(place(u)) + '</td><td class="nowrap">' + esc(u.phone) + '</td>' +
@@ -1140,7 +1142,7 @@
         m.close();
         if (it.password) {
           var text = 'CRM кампании ЮАО\nСайт: ' + location.origin + location.pathname + '\nЛогин: ' + saved.login + '\nПароль: ' + it.password;
-          var c = modal('Доступ готов', '<p style="margin-top:0">Передайте эти данные <b>' + esc(saved.name) + '</b> лично. Пароль больше нигде не показывается — он хранится только в зашифрованном виде.</p><div class="cred">' + esc(text) + '</div>',
+          var c = modal('Доступ готов', '<p style="margin-top:0">Передайте эти данные <b>' + esc(saved.name) + '</b> лично. Логин и пароль также записаны в Google Таблицу на лист «Логины и пароли».</p><div class="cred">' + esc(text) + '</div>',
             '<button class="btn" data-c>Закрыть</button><button class="btn primary" data-copy>Скопировать</button>');
           $('[data-c]', c.el).onclick = c.close;
           $('[data-copy]', c.el).onclick = function () { navigator.clipboard.writeText(text).then(function () { toast('Скопировано'); }, function () { toast('Выделите текст и скопируйте вручную', true); }); };
