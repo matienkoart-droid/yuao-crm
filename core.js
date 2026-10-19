@@ -385,7 +385,7 @@ var CRM = (function () {
       me: publicUser(me, true),
       okrugs: S.rows('Okrugs'),
       plan: S.rows('Plan').sort(function (a, b) { return a.month < b.month ? -1 : 1; }),
-      users: S.rows('Users').map(function (u) { return publicUser(u, full); }),
+      users: S.rows('Users').map(function (u) { return publicUser(u, full || coordOwns(me, u)); }),
       candidates: S.rows('Candidates').filter(function (c) { return sc[c.okrug]; }),
       events: S.rows('Events').filter(function (e) { return sc[e.okrug]; }),
       media: S.rows('Media'),
@@ -412,8 +412,12 @@ var CRM = (function () {
     });
   }
 
+  // Координатор управляет только стажёрами своей зоны
+  function coordOwns(me, u) { return me.role === 'coord' && u.role === 'intern' && !!me.zone && u.zone === me.zone; }
+  function needManager(me) { if (me.role !== 'admin' && me.role !== 'coord') throw fail('Выдавать доступ могут руководитель и координаторы', 'FORBIDDEN'); }
+
   function userSave(S, me, req) {
-    needAdmin(me);
+    needManager(me);
     var it = req.item || {}, users = S.rows('Users');
     var login = str(it.login).toLowerCase();
     if (!/^[a-z0-9._-]{2,32}$/.test(login)) throw fail('Логин: 2–32 символа, латиница, цифры, точка, дефис');
@@ -425,6 +429,12 @@ var CRM = (function () {
     if (it.role === 'coord' && !ZONES[it.zone]) throw fail('Координатору нужна зона');
     var u = it.id ? users.filter(function (x) { return x.id === it.id; })[0] : null;
     if (it.id && !u) throw fail('Пользователь не найден');
+    if (it.role === 'member' && !(u && u.role === 'member')) throw fail('Роль «Участник команды» больше не используется — выберите «Стажёр»');
+    if (me.role === 'coord') {
+      if (it.role !== 'intern') throw fail('Координатор может выдавать доступ только стажёрам');
+      if (okr[it.okrug].zone !== me.zone) throw fail('Можно выбрать только округ своей зоны');
+      if (u && !coordOwns(me, u)) throw fail('Можно менять только стажёров своей зоны', 'FORBIDDEN');
+    }
     if (u && u.id === me.id && (it.role !== 'admin' || !truthy(it.active))) throw fail('Нельзя снять права или отключить самого себя');
     var rec = u || { id: S.uuid(), created: nowMsk(), lastLogin: '' };
     rec.login = login; rec.name = str(it.name); rec.role = it.role; rec.phone = str(it.phone);
@@ -444,10 +454,11 @@ var CRM = (function () {
   }
 
   function userDelete(S, me, req) {
-    needAdmin(me);
+    needManager(me);
     if (req.id === me.id) throw fail('Нельзя удалить самого себя');
     var u = S.rows('Users').filter(function (x) { return x.id === req.id; })[0];
     if (!u) return { removed: 0 };
+    if (me.role === 'coord' && !coordOwns(me, u)) throw fail('Можно удалять только стажёров своей зоны', 'FORBIDDEN');
     S.remove('Users', u.id);
     S.removeWhere(CRED, function (r) { return r.id === u.id; });
     S.removeWhere('Sessions', function (s) { return s.userId === u.id; });

@@ -1171,23 +1171,31 @@
   }
 
   /* ================= КОМАНДА ================= */
+  // Кто кого может менять: руководитель — всех; координатор — только стажёров своей зоны
+  function canManageTeam() { return S.me.role === 'admin' || S.me.role === 'coord'; }
+  function canEditUser(u) { return S.me.role === 'admin' || (S.me.role === 'coord' && u.role === 'intern' && u.zone === S.me.zone); }
+
   function viewTeam(box) {
-    var adm = isAdmin();
+    var adm = isAdmin(), coord = S.me.role === 'coord', manage = canManageTeam();
     var order = { admin: 0, coord: 1, intern: 2, member: 3 };
     var list = S.users.slice().sort(function (a, b) { return order[a.role] - order[b.role] || (a.zone || '').localeCompare(b.zone || '') || a.name.localeCompare(b.name); });
     var place = function (u) { return u.role === 'coord' ? u.zone + ' · ' + CRM.ZONES[u.zone] : u.okrug ? okrugName(u.okrug) : 'Весь ЮАО'; };
     var cnt = function (r) { return S.users.filter(function (u) { return u.role === r && u.active; }).length; };
-    box.innerHTML = '<div class="head"><div><h1>Команда</h1><div class="sub">Координаторов: ' + cnt('coord') + ' из 8 · стажёров: ' + cnt('intern') + ' из 33 · участников: ' + cnt('member') + '</div></div><div class="tools">' +
+    var mine = coord ? S.users.filter(function (u) { return canEditUser(u) && u.active; }).length : 0;
+    box.innerHTML = '<div class="head"><div><h1>Команда</h1><div class="sub">Координаторов: ' + cnt('coord') + ' из 8, стажёров: ' + cnt('intern') + ' из 33' +
+      (coord ? '. В вашей зоне ' + S.me.zone + ' стажёров: ' + mine : '') + '</div></div><div class="tools">' +
       (adm && S.credUrl ? '<a class="btn" href="' + esc(S.credUrl) + '" target="_blank" rel="noopener">' + icon('link') + 'Все логины и пароли</a>' : '') +
-      (adm ? '<button class="btn primary" id="uAdd">' + icon('plus') + 'Выдать доступ</button>' : '') + '</div></div>' +
-      (adm ? '<p class="sub" style="margin:0 0 var(--s3)">Каждый выданный логин и пароль записывается в Google Таблицу на лист «Логины и пароли» — его видите только вы. Если сотрудник сменит пароль сам, там будет пометка.</p>' : '') +
-      '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Имя</th><th>Роль</th><th>Зона / округ</th><th>Телефон</th>' + (adm ? '<th>Логин</th><th>Последний вход</th>' : '') + '</tr></thead><tbody>' +
+      (manage ? '<button class="btn primary" id="uAdd">' + icon('plus') + (coord ? 'Выдать доступ стажёру' : 'Выдать доступ') + '</button>' : '') + '</div></div>' +
+      (adm ? '<p class="sub" style="margin:0 0 var(--s3)">Каждый выданный логин и пароль (и вами, и координаторами) записывается в Google Таблицу на лист «Логины и пароли» — его видите только вы. Если сотрудник сменит пароль сам, там будет пометка.</p>' : '') +
+      (coord ? '<p class="sub" style="margin:0 0 var(--s3)">Вы можете выдавать доступ стажёрам округов своей зоны, сбрасывать им пароль, отключать и удалять их. Нажмите на своего стажёра в списке, чтобы изменить.</p>' : '') +
+      '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Имя</th><th>Роль</th><th>Зона / округ</th><th>Телефон</th>' + (manage ? '<th>Логин</th><th>Последний вход</th>' : '') + '</tr></thead><tbody>' +
       list.map(function (u) {
-        return '<tr' + (adm ? ' class="click" data-u="' + u.id + '"' : '') + (u.active ? '' : ' style="opacity:.5"') + '><td><b>' + esc(u.name) + '</b>' + (u.active ? '' : ' <span class="pill">отключён</span>') + '</td><td>' + CRM.ROLES[u.role] + '</td><td>' + esc(place(u)) + '</td><td class="nowrap">' + esc(u.phone) + '</td>' +
-          (adm ? '<td>' + esc(u.login) + '</td><td class="nowrap sub">' + (u.lastLogin ? dateRu(u.lastLogin) + ' ' + u.lastLogin.slice(11, 16) : 'не входил') + '</td>' : '') + '</tr>';
+        var ed = canEditUser(u);
+        return '<tr' + (ed ? ' class="click" data-u="' + u.id + '"' : '') + (u.active ? '' : ' style="opacity:.5"') + '><td><b>' + esc(u.name) + '</b>' + (u.active ? '' : ' <span class="pill">отключён</span>') + '</td><td>' + CRM.ROLES[u.role] + '</td><td>' + esc(place(u)) + '</td><td class="nowrap">' + esc(u.phone) + '</td>' +
+          (manage ? '<td>' + esc(u.login || '') + '</td><td class="nowrap sub">' + (u.login ? (u.lastLogin ? dateRu(u.lastLogin) + ' ' + u.lastLogin.slice(11, 16) : 'не входил') : '') + '</td>' : '') + '</tr>';
       }).join('') + '</tbody></table></div>';
-    if (adm) {
-      $('#uAdd').onclick = function () { editUser({ role: 'intern', active: true }); };
+    if (manage) {
+      $('#uAdd').onclick = function () { editUser({ role: 'intern', active: true, okrug: coord ? myOkrugs()[0] : '' }); };
       $all('tr[data-u]', box).forEach(function (tr) { tr.onclick = function () { editUser(user(tr.dataset.u)); }; });
     }
   }
@@ -1205,14 +1213,17 @@
     var isNew = !u.id, pw = presetPw || (isNew ? genPassword() : '');
     var m = modal(isNew ? 'Новый доступ' : 'Доступ: ' + u.name,
       '<form id="uF"><label class="f"><span>Имя и фамилия</span><input class="input" name="name" value="' + esc(u.name) + '" required></label>' +
-      '<div class="row2"><label class="f"><span>Роль</span><select class="input" name="role">' + Object.keys(CRM.ROLES).map(function (r) { return '<option value="' + r + '"' + (r === u.role ? ' selected' : '') + '>' + CRM.ROLES[r] + '</option>'; }).join('') + '</select></label>' +
+      '<div class="row2"><label class="f"><span>Роль</span><select class="input" name="role"' + (S.me.role === 'coord' ? ' disabled' : '') + '>' + Object.keys(CRM.ROLES).filter(function (r) {
+        if (S.me.role === 'coord') return r === 'intern';
+        return r !== 'member' || u.role === 'member'; // «Участник команды» больше не выдаётся
+      }).map(function (r) { return '<option value="' + r + '"' + (r === u.role ? ' selected' : '') + '>' + CRM.ROLES[r] + '</option>'; }).join('') + '</select></label>' +
       '<label class="f"><span>Телефон</span><input class="input" name="phone" type="tel" value="' + esc(u.phone) + '"></label></div>' +
       '<label class="f" id="fZone"><span>Зона координатора</span><select class="input" name="zone">' + Object.keys(CRM.ZONES).map(function (z) { return '<option value="' + z + '"' + (z === u.zone ? ' selected' : '') + '>' + z + ' · ' + CRM.ZONES[z] + '</option>'; }).join('') + '</select></label>' +
-      '<label class="f" id="fOkr"><span>Избирательный округ</span><select class="input" name="okrug">' + okrugOptions(u.okrug, { all: true }) + '</select></label>' +
+      '<label class="f" id="fOkr"><span>Избирательный округ</span><select class="input" name="okrug">' + okrugOptions(u.okrug, { all: S.me.role !== 'coord' }) + '</select></label>' +
       '<div class="row2"><label class="f"><span>Логин</span><input class="input" name="login" autocapitalize="none" value="' + esc(u.login) + '"></label>' +
       '<label class="f"><span>' + (isNew ? 'Пароль' : 'Новый пароль (пусто — не менять)') + '</span><div style="display:flex;gap:6px"><input class="input" name="password" value="' + pw + '"><button type="button" class="btn icon-only" id="gen" aria-label="Сгенерировать пароль" title="Сгенерировать пароль">' + icon('refresh') + '</button></div></label></div>' +
       '<label class="check"><input type="checkbox" name="active"' + (u.active ? ' checked' : '') + '> Доступ включён</label>' +
-      '<p class="sub" style="margin:0">Стажёр и участник видят и ведут только свой округ, координатор — свою зону, руководитель — всё.</p></form>',
+      '<p class="sub" style="margin:0">' + (S.me.role === 'coord' ? 'Стажёр видит и ведёт только свой округ.' : 'Стажёр видит и ведёт только свой округ, координатор — свою зону и может выдавать доступ своим стажёрам, руководитель — всё.') + '</p></form>',
       (!isNew && u.id !== S.me.id ? '<button class="btn danger left" data-d>Удалить</button>' : '') + '<button class="btn" data-c>Отмена</button><button class="btn primary" data-s>Сохранить</button>');
     var f = $('#uF', m.el);
     var sync = function () {
