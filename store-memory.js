@@ -17,6 +17,10 @@ function MemoryStore(persistKey) {
     replaceAll: function (n, l) { db[n] = l.map(copy); save(); },
     uuid: function () { return (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : require('crypto').randomUUID(); },
     lock: function (fn) { return fn(); },
+    // Демо: файлы хранятся тут же, в памяти браузера
+    saveFile: function (id, name, mime, base64) { (db._files = db._files || {})[id] = base64; save(); return id; },
+    readFile: function (fid) { return (db._files || {})[fid] || ''; },
+    deleteFile: function (fid) { if (db._files) { delete db._files[fid]; save(); } },
     wipe: function () { db = {}; save(); }
   };
 }

@@ -11,7 +11,7 @@
     if (!demoStore.rows('Users').length) CRM.createAdmin(demoStore, 'admin', 'admin123');
   }
 
-  var S = { token: lsGet(TOKEN_KEY), me: null, okrugs: [], plan: [], users: [], candidates: [], events: [], media: [], interviews: [], passports: [], stats: {}, photos: {}, geo: null };
+  var S = { token: lsGet(TOKEN_KEY), me: null, okrugs: [], plan: [], users: [], candidates: [], events: [], media: [], interviews: [], passports: [], files: [], stats: {}, photos: {}, geo: null };
   var UI = { pOkrug: '', month: null, mode: 'month', layer: 'traffic', uikF: { q: '', district: '', okrug: '' }, selOkrug: null, candF: { okrug: '', status: '', q: '' }, evF: { month: '', okrug: '', status: '' }, ivF: { okrug: '', status: 'upcoming' }, mdF: { kind: '', network: '', okrug: '', q: '' }, kmbF: { q: '', okrug: '', offset: 0 } };
   var app = document.getElementById('app');
   var map = null, geoLayer = null, labelLayer = null, districtLayer = null;
@@ -212,7 +212,7 @@
     loading = api('bootstrap').then(function (d) {
       if (!d || !d.me) throw new Error('Сервер вернул пустой ответ');
       S.me = d.me; S.okrugs = d.okrugs; S.plan = d.plan; S.users = d.users; S.credUrl = d.credUrl || '';
-      S.candidates = d.candidates; S.events = d.events; S.media = d.media || []; S.interviews = d.interviews || []; S.passports = d.passports || []; S.stats = d.stats;
+      S.candidates = d.candidates; S.events = d.events; S.media = d.media || []; S.interviews = d.interviews || []; S.passports = d.passports || []; S.files = d.files || []; S.stats = d.stats;
       if (!UI.month || campaignMonths().indexOf(UI.month) < 0) UI.month = defaultMonth();
       if (!UI.evF.month) UI.evF.month = curMonth();
       var y = window.scrollY, onMap = route() === 'map' && !first;
@@ -607,17 +607,7 @@
     if (S.addr) return Promise.resolve(S.addr);
     return fetch('data/okruga-2022.json?v=' + (window.CRM_BUILD || '')).then(function (r) { return r.json(); }).then(function (d) { S.addr = d; return d; });
   }
-  function loadScript(url, global) {
-    if (window[global]) return Promise.resolve(window[global]);
-    return new Promise(function (ok, no) {
-      var sc = document.createElement('script'); sc.src = url;
-      sc.onload = function () { window[global] ? ok(window[global]) : no(new Error('Библиотека не загрузилась')); };
-      sc.onerror = function () { no(new Error('Не удалось загрузить библиотеку — проверьте интернет')); };
-      document.head.appendChild(sc);
-    });
-  }
-
-  // Все сведения по округу в одном объекте — для экрана, Word и Excel
+  // Все сведения по округу в одном объекте
   function passportData(oid) {
     var o = okrug(oid), pass = S.passports.filter(function (p) { return p.okrug === oid; })[0] || {};
     var em = evalOkrug(oid, UI.month, 'month'), ec = evalOkrug(oid, UI.month, 'cum');
@@ -649,17 +639,10 @@
   function viewPassport(box) {
     var oid = UI.pOkrug || UI.selOkrug || myOkrugs()[0] || S.okrugs[0].id;
     UI.pOkrug = oid;
-    box.innerHTML = '<div class="head"><div><h1>Паспорт округа</h1><div class="sub">Справка по избирательному округу: территория, участки, команда, кандидаты, план</div></div><div class="tools">' +
-      '<select class="input" id="pO">' + okrugOptions(oid, { all: true }) + '</select>' +
-      '<button class="btn" id="pDoc">' + icon('doc') + 'Word</button><button class="btn" id="pDocD">' + icon('doc') + 'Word: весь район</button>' +
-      '<button class="btn" id="pXls">' + icon('xls') + 'Excel</button><button class="btn" id="pXlsAll">' + icon('xls') + 'Excel: все 33 округа</button></div></div>' +
+    box.innerHTML = '<div class="head"><div><h1>Паспорт округа</h1><div class="sub">Справка по избирательному округу и документы команды: территория, участки, кандидаты, план</div></div><div class="tools">' +
+      '<select class="input" id="pO">' + okrugOptions(oid, { all: true }) + '</select></div></div>' +
       '<div id="pBox"><div class="card empty">Загрузка…</div></div>';
     $('#pO').onchange = function (e) { UI.pOkrug = e.target.value; render(); };
-    var run = function (btn, fn) { btn.disabled = true; var t = btn.innerHTML; btn.innerHTML = 'Готовлю файл…'; Promise.resolve().then(fn).then(function () { toast('Файл скачан'); }).catch(fail).then(function () { btn.disabled = false; btn.innerHTML = t; }); };
-    $('#pDoc').onclick = function () { run(this, function () { return exportWord([oid], 'Паспорт — ' + okrugName(oid)); }); };
-    $('#pDocD').onclick = function () { var d = okrug(oid).district; run(this, function () { return exportWord(S.okrugs.filter(function (o) { return o.district === d; }).map(function (o) { return o.id; }), 'Паспорт района ' + d); }); };
-    $('#pXls').onclick = function () { run(this, function () { return exportExcel([oid], 'Паспорт — ' + okrugName(oid)); }); };
-    $('#pXlsAll').onclick = function () { run(this, function () { return exportExcel(S.okrugs.map(function (o) { return o.id; }), 'Паспорта округов ЮАО'); }); };
     Promise.all([loadUik().catch(function () { }), loadAddr().catch(function () { })]).then(function () { drawPassport(oid); });
   }
 
@@ -669,7 +652,16 @@
     var box = $('#pBox'); if (!box) return;
     var d = passportData(oid), canEditP = myOkrugs().indexOf(oid) >= 0;
     var desc = PASS_FIELDS.map(function (f) { return '<div class="pf"><h3>' + f[1] + '</h3>' + (d.pass[f[0]] ? '<p>' + esc(d.pass[f[0]]) + '</p>' : '<p class="muted">не заполнено</p>') + '</div>'; }).join('');
+    var files = S.files.filter(function (f) { return f.okrug === oid; }).sort(function (a, b) { return a.created < b.created ? 1 : -1; });
+    var canDel = function (f) { return S.me.role === 'admin' || f.createdBy === S.me.id || (S.me.role === 'coord' && d.o.zone === S.me.zone); };
     box.innerHTML =
+      '<div class="card" style="margin-bottom:var(--s4)"><div class="head" style="margin-bottom:var(--s3)"><div><h2 style="margin:0">Документы (' + files.length + ')</h2><div class="sub">Word, Excel и PDF до 10 МБ. Скачать может любой сотрудник.</div></div>' +
+      (canEditP ? '<label class="btn primary" id="fAddL">' + icon('upload') + 'Добавить Word / Excel<input type="file" id="fAdd" hidden accept=".doc,.docx,.xls,.xlsx,.pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/pdf"></label>' : '') + '</div>' +
+      (files.length ? '<div class="tbl-wrap" style="box-shadow:none"><table class="tbl"><tbody>' + files.map(function (f) {
+        var ext = (f.name.split('.').pop() || '').toLowerCase();
+        return '<tr><td style="width:28px">' + icon(/xls/.test(ext) ? 'xls' : /doc/.test(ext) ? 'doc' : 'passport') + '</td><td><b>' + esc(f.name) + '</b><div class="sub">' + fileSize(f.size) + ', добавил(а) ' + esc(f.authorName || '—') + ', ' + dateRu(f.created) + '</div></td>' +
+          '<td class="nowrap" style="text-align:right"><button class="btn sm" data-fget="' + f.id + '">' + icon('download') + 'Скачать</button>' + (canDel(f) ? ' <button class="btn sm danger icon-only" data-fdel="' + f.id + '" aria-label="Удалить файл" title="Удалить файл">' + icon('x') + '</button>' : '') + '</td></tr>';
+      }).join('') + '</tbody></table></div>' : '<p class="muted" style="margin:0">' + (canEditP ? 'Документов пока нет — добавьте первый.' : 'Документов пока нет.') + '</p>') + '</div>' +
       '<div class="grid two" style="margin-bottom:var(--s4)">' +
       '<div class="card"><h2>Основное</h2>' + kvTable(d.main) + '</div>' +
       '<div class="card"><h2>План и работа</h2>' + kvTable(d.plan) + '</div></div>' +
@@ -687,6 +679,18 @@
         d.uiks.map(function (u) { return '<tr><td class="num"><b>' + u.number + '</b></td><td>' + esc(u.place) + '<div class="sub">' + esc(u.address) + (u.phone ? ', ' + esc(u.phone) : '') + (u.shared ? ' · участок частично в соседнем округе' : '') + '</div></td><td class="num">' + u.houses + '</td></tr>'; }).join('') + '</tbody></table></div>' : '<p class="muted">Нет данных.</p>') + '</div>' +
       '<div class="card"><h2>Территория: улицы и дома</h2>' + (d.streets.length ? d.streets.map(function (x) { return '<p class="small" style="margin:0 0 var(--s2)"><b>' + esc(x[0]) + ':</b> ' + esc(x[1]) + '</p>'; }).join('') : '<p class="muted">Нет данных.</p>') + '</div>';
     var e = $('#pEdit'); if (e) e.onclick = function () { editPassport(oid); };
+    var inp = $('#fAdd');
+    if (inp) inp.onchange = function () { var file = inp.files[0]; inp.value = ''; if (file) uploadPassportFile(oid, file); };
+    $all('[data-fget]', box).forEach(function (b) { b.onclick = function () { downloadPassportFile(b.dataset.fget, b); }; });
+    $all('[data-fdel]', box).forEach(function (b) {
+      b.onclick = function () {
+        var f = S.files.filter(function (x) { return x.id === b.dataset.fdel; })[0];
+        confirmBox('Удалить файл «' + f.name + '»?', 'Удалить').then(function (y) {
+          if (!y) return;
+          api('fileDelete', { id: f.id }).then(function () { S.files = S.files.filter(function (x) { return x.id !== f.id; }); toast('Удалено'); drawPassport(oid); }).catch(fail);
+        });
+      };
+    });
   }
 
   function editPassport(oid) {
@@ -704,81 +708,30 @@
     };
   }
 
-  function fileName(t) { return String(t).replace(/[\\/:*?"<>|]/g, '').replace(/\s+/g, ' ').slice(0, 80); }
+  function fileSize(n) { n = +n || 0; return n > 1048576 ? (n / 1048576).toFixed(1).replace('.', ',') + ' МБ' : Math.max(1, Math.round(n / 1024)) + ' КБ'; }
 
-  // Word (.docx): один или несколько паспортов, каждый с новой страницы
-  function exportWord(ids, title) {
-    return Promise.all([loadUik().catch(function () { }), loadAddr().catch(function () { }), loadScript('https://unpkg.com/docx@8.5.0/build/index.umd.js', 'docx')]).then(function (r) {
-      var D = r[2], F = 'Arial';
-      var P = function (text, o) { o = o || {}; return new D.Paragraph({ spacing: { after: o.after == null ? 80 : o.after }, pageBreakBefore: !!o.br, heading: o.h, children: [new D.TextRun({ text: String(text == null ? '' : text), bold: !!o.b, size: o.size || 20, font: F, color: o.color })] }); };
-      var cell = function (t, head, w) { return new D.TableCell({ width: w ? { size: w, type: D.WidthType.PERCENTAGE } : undefined, shading: head ? { fill: 'E8EEF6' } : undefined, children: [P(t, { b: head, after: 0 })] }); };
-      var table = function (head, rows, widths) {
-        return new D.Table({ width: { size: 100, type: D.WidthType.PERCENTAGE }, rows: (head ? [new D.TableRow({ tableHeader: true, children: head.map(function (h, i) { return cell(h, true, widths && widths[i]); }) })] : [])
-          .concat(rows.map(function (row) { return new D.TableRow({ children: row.map(function (c, i) { return cell(c, !head && i === 0, widths && widths[i]); }) }); })) });
-      };
-      var H = function (t) { return P(t, { b: true, size: 24, after: 120 }); };
-      var body = [];
-      ids.forEach(function (oid, n) {
-        var d = passportData(oid);
-        body.push(P('Паспорт избирательного округа', { br: n > 0, size: 20, color: '666666', after: 40 }));
-        body.push(P(d.o.name, { b: true, size: 36, after: 60 }));
-        body.push(P('Муниципальные выборы 2027 · ЮАО · сформирован ' + dateRu(todayMsk()), { size: 18, color: '666666', after: 240 }));
-        body.push(H('Основное')); body.push(table(null, d.main, [40, 60])); body.push(P('', { after: 200 }));
-        body.push(H('План и работа')); body.push(table(null, d.plan, [40, 60])); body.push(P('', { after: 200 }));
-        body.push(H('Описание округа'));
-        PASS_FIELDS.forEach(function (f) { body.push(P(f[1], { b: true, after: 40 })); body.push(P(d.pass[f[0]] || '—', { after: 140 })); });
-        body.push(H('Кандидаты'));
-        if (d.cands && d.cands.length) body.push(table(['ФИО', 'Статус', 'Бюджет', 'Телефон'], d.cands.map(function (c) { return [c.fio, c.status, c.budget ? fmt(c.budget) + ' ₽' : '—', c.phone || '']; }), [40, 20, 20, 20]));
-        else body.push(P(d.cands ? 'Кандидатов пока нет.' : 'Всего кандидатов: ' + d.candCount + ' (список доступен руководителю, координатору и стажёру округа).'));
-        body.push(P('', { after: 200 }));
-        body.push(H('Медиа'));
-        body.push(d.media.length ? table(['Канал', 'Тип и соцсеть', 'Подписчики'], d.media.map(function (m) { return [m.title || m.url, CRM.MEDIA_KINDS[m.kind] + ', ' + m.network, m.subscribers || '—']; }), [50, 30, 20]) : P('Каналов пока нет.'));
-        body.push(P('', { after: 200 }));
-        body.push(H('Избирательные участки (Госдума 2026)'));
-        body.push(d.uiks.length ? table(['УИК', 'Пункт голосования', 'Домов в округе'], d.uiks.map(function (u) { return [String(u.number), u.place + ', ' + u.address + (u.phone ? ', ' + u.phone : '') + (u.shared ? ' (участок частично в соседнем округе)' : ''), String(u.houses)]; }), [12, 70, 18]) : P('Нет данных.'));
-        body.push(P('', { after: 200 }));
-        body.push(H('Территория: улицы и дома'));
-        d.streets.forEach(function (x) { body.push(new D.Paragraph({ spacing: { after: 60 }, children: [new D.TextRun({ text: x[0] + ': ', bold: true, size: 18, font: F }), new D.TextRun({ text: x[1], size: 18, font: F })] })); });
-      });
-      var doc = new D.Document({ creator: 'CRM ЮАО', title: title, sections: [{ properties: { page: { margin: { top: 1000, bottom: 1000, left: 1100, right: 1000 } } }, children: body }] });
-      return D.Packer.toBlob(doc);
-    }).then(function (blob) { saveBlob(fileName(title) + '.docx', blob); });
+  function uploadPassportFile(oid, file) {
+    if (!/\.(docx?|xlsx?|pdf)$/i.test(file.name)) return toast('Можно добавить только Word, Excel или PDF', true);
+    if (file.size > 10 * 1024 * 1024) return toast('Файл больше 10 МБ', true);
+    var lbl = $('#fAddL'); if (lbl) { lbl.classList.add('disabled'); lbl.firstChild && (lbl.childNodes[1].textContent = 'Загружаю…'); }
+    var reader = new FileReader();
+    reader.onload = function () {
+      var data = String(reader.result).split(',')[1];
+      api('fileUpload', { okrug: oid, name: file.name, mime: file.type, data: data }).then(function (rec) {
+        S.files.push(rec); toast('Файл добавлен'); if (route() === 'passport') drawPassport(oid);
+      }).catch(function (e) { fail(e); if (route() === 'passport') drawPassport(oid); });
+    };
+    reader.onerror = function () { toast('Не удалось прочитать файл', true); };
+    reader.readAsDataURL(file);
   }
 
-  // Excel (.xlsx): по одному округу — несколько листов; по всем — сводка + кандидаты + участки
-  function exportExcel(ids, title) {
-    return Promise.all([loadUik().catch(function () { }), loadAddr().catch(function () { }), loadScript('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js', 'XLSX')]).then(function (r) {
-      var X = r[2], wb = X.utils.book_new();
-      var sheet = function (name, aoa, widths) { var ws = X.utils.aoa_to_sheet(aoa); ws['!cols'] = (widths || []).map(function (w) { return { wch: w }; }); X.utils.book_append_sheet(wb, ws, name.slice(0, 31)); };
-      var data = ids.map(passportData);
-      if (ids.length === 1) {
-        var d = data[0];
-        sheet('Паспорт', [['Паспорт избирательного округа', d.o.name], []].concat(d.main, [[]], d.plan, [[]], PASS_FIELDS.map(function (f) { return [f[1], d.pass[f[0]] || '']; })), [36, 80]);
-      } else {
-        sheet('Сводка', [['Округ', 'Район', 'Зона', 'Мандатов', 'Избирателей', 'Координатор', 'Стажёр', 'Кандидатов', 'План месяца, %', 'Нарастающим, %', 'Встречи (мес.)', 'Акции (мес.)', 'КМБ (мес.)', 'КМБ всего', 'Медиа-каналов', 'УИК', 'Проблемы', 'Ключевые объекты']]
-          .concat(data.map(function (d) {
-            var g = function (k) { return (d.main.concat(d.plan).filter(function (x) { return x[0] === k; })[0] || [])[1]; };
-            return [d.o.name, d.o.district, d.o.zone, +d.o.mandates, +d.o.voters, g('Координатор зоны'), g('Стажёр'), d.cands ? d.cands.length : d.candCount,
-              g('Выполнение плана за ' + monthName(UI.month)), g('Нарастающим итогом'), g('Встречи за месяц'), g('Акции за месяц'), g('КМБ за месяц'), g('КМБ всего в базе'),
-              d.media.length, d.uiks.map(function (u) { return u.number; }).join(', '), d.pass.problems || '', d.pass.objects || ''];
-          })), [26, 22, 6, 9, 11, 26, 26, 10, 12, 12, 12, 12, 12, 10, 10, 30, 40, 40]);
-      }
-      var multi = ids.length > 1;
-      var cands = [], uiks = [], streets = [], media = [];
-      data.forEach(function (d) {
-        (d.cands || []).forEach(function (c) { cands.push((multi ? [d.o.name] : []).concat([c.fio, c.status, +c.budget || '', c.phone || '', c.description || ''])); });
-        d.uiks.forEach(function (u) { uiks.push((multi ? [d.o.name] : []).concat([u.number, u.place, u.address, u.phone, u.houses, u.shared ? 'да' : ''])); });
-        d.streets.forEach(function (x) { streets.push((multi ? [d.o.name] : []).concat([x[0], x[1]])); });
-        d.media.forEach(function (m) { media.push((multi ? [d.o.name] : []).concat([m.title || '', m.url || '', CRM.MEDIA_KINDS[m.kind], m.network, +m.subscribers || ''])); });
-      });
-      var pre = multi ? ['Округ'] : [];
-      sheet('Кандидаты', [pre.concat(['ФИО', 'Статус', 'Бюджет, ₽', 'Телефон', 'Описание'])].concat(cands), (multi ? [26] : []).concat([32, 18, 12, 18, 50]));
-      sheet('Участки (УИК)', [pre.concat(['УИК', 'Пункт голосования', 'Адрес', 'Телефон', 'Домов в округе', 'Частично в другом округе'])].concat(uiks), (multi ? [26] : []).concat([8, 50, 34, 18, 14, 12]));
-      sheet('Улицы и дома', [pre.concat(['Улица', 'Дома'])].concat(streets), (multi ? [26] : []).concat([32, 100]));
-      sheet('Медиа', [pre.concat(['Канал', 'Ссылка', 'Тип', 'Соцсеть', 'Подписчики'])].concat(media), (multi ? [26] : []).concat([32, 36, 18, 14, 12]));
-      var out = X.write(wb, { bookType: 'xlsx', type: 'array' });
-      saveBlob(fileName(title) + '.xlsx', new Blob([out], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
-    });
+  function downloadPassportFile(id, btn) {
+    btn.disabled = true; var t = btn.innerHTML; btn.innerHTML = 'Скачиваю…';
+    api('fileGet', { id: id }).then(function (f) {
+      var bin = atob(f.data), u = new Uint8Array(bin.length);
+      for (var i = 0; i < bin.length; i++) u[i] = bin.charCodeAt(i);
+      saveBlob(f.name, new Blob([u], { type: f.mime || 'application/octet-stream' }));
+    }).catch(fail).then(function () { btn.disabled = false; btn.innerHTML = t; });
   }
 
   function saveBlob(name, blob) {

@@ -395,3 +395,5 @@ table.tbl { width: 100%; border-collapse: collapse; font-variant-numeric: tabula
 .pf { margin-bottom: var(--s3); }
 .pf h3 { margin-bottom: var(--s1); font-size: var(--fs-sm); color: var(--text-2); }
 .pf p { margin: 0; white-space: pre-wrap; }
+
+label.btn.disabled { opacity: .55; pointer-events: none; }

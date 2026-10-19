@@ -22,6 +22,8 @@ var CRM = (function () {
     Interviews: ['id', 'okrug', 'fio', 'phone', 'date', 'time', 'place', 'interviewer', 'attended', 'verdict', 'comment', 'candidateId', 'created', 'createdBy', 'updated'],
     Plan: ['month', 'meetings', 'actions', 'kmb'],
     Passports: ['okrug', 'objects', 'problems', 'leaders', 'competitors', 'features', 'updated', 'updatedBy'],
+    // Документы паспортов: сами файлы лежат на Google Диске, здесь — список
+    Files: ['id', 'okrug', 'name', 'mime', 'size', 'driveId', 'created', 'createdBy', 'authorName'],
     Log: ['ts', 'user', 'action', 'details'],
     // Лист для руководителя: открытые логины и пароли, которые он выдал. Сайт его никому не отдаёт.
     'Логины и пароли': ['Логин', 'Пароль', 'Имя', 'Роль', 'Зона или округ', 'Телефон', 'Доступ', 'Изменено', 'id']
@@ -391,6 +393,7 @@ var CRM = (function () {
       events: S.rows('Events').filter(function (e) { return sc[e.okrug]; }),
       media: S.rows('Media'),
       passports: S.rows('Passports'),
+      files: S.rows('Files').map(function (f) { return pick(f, ['id', 'okrug', 'name', 'mime', 'size', 'created', 'createdBy', 'authorName']); }),
       interviews: me.role === 'member' ? [] : S.rows('Interviews').filter(function (i) { return sc[i.okrug]; }),
       stats: stats(S),
       server: S.kind,
@@ -493,6 +496,39 @@ var CRM = (function () {
     return rec;
   }
 
+  // Документы паспорта: Word, Excel, PDF до 10 МБ
+  var FILE_EXT = /\.(docx?|xlsx?|pdf)$/i, FILE_MAX = 10 * 1024 * 1024;
+  function fileUpload(S, me, req) {
+    var oid = str(req.okrug), name = str(req.name).replace(/[\\/:*?"<>|]/g, '').slice(0, 150), data = String(req.data || '');
+    if (!okrugMap(S)[oid]) throw fail('Округ не найден');
+    if (!inScope(S, me, oid)) throw fail('Добавлять документы можно только в свои округа', 'FORBIDDEN');
+    if (!FILE_EXT.test(name)) throw fail('Можно добавить только Word, Excel или PDF');
+    var size = Math.floor(data.length * 3 / 4);
+    if (!data || size > FILE_MAX) throw fail('Файл пустой или больше 10 МБ');
+    if (!S.saveFile) throw fail('Хранилище файлов недоступно');
+    var rec = { id: S.uuid(), okrug: oid, name: name, mime: str(req.mime), size: String(size), created: nowMsk(), createdBy: me.id, authorName: me.name };
+    rec.driveId = S.saveFile(rec.id, name, rec.mime, data);
+    S.insert('Files', rec);
+    log(S, me, 'add file', oid + ' ' + name);
+    return pick(rec, ['id', 'okrug', 'name', 'mime', 'size', 'created', 'createdBy', 'authorName']);
+  }
+  function fileGet(S, me, req) {
+    var f = S.rows('Files').filter(function (x) { return x.id === req.id; })[0];
+    if (!f) throw fail('Файл не найден — возможно, его удалили');
+    return { name: f.name, mime: f.mime, data: S.readFile(f.driveId) };
+  }
+  function fileDelete(S, me, req) {
+    var f = S.rows('Files').filter(function (x) { return x.id === req.id; })[0];
+    if (!f) return { removed: 0 };
+    var o = okrugMap(S)[f.okrug];
+    var allowed = me.role === 'admin' || f.createdBy === me.id || (me.role === 'coord' && o && o.zone === me.zone);
+    if (!allowed) throw fail('Удалить файл может тот, кто его добавил, координатор зоны или руководитель', 'FORBIDDEN');
+    if (S.deleteFile) S.deleteFile(f.driveId);
+    S.remove('Files', f.id);
+    log(S, me, 'delete file', f.okrug + ' ' + f.name);
+    return { removed: 1 };
+  }
+
   function okrugSave(S, me, req) {
     var it = req.item || {}, o = okrugMap(S)[it.id];
     if (!o) throw fail('Округ не найден');
@@ -544,10 +580,10 @@ var CRM = (function () {
   function backups(S, me) { needAdmin(me); return S.listBackups ? S.listBackups() : []; }
   function logList(S, me) { needAdmin(me); var l = S.rows('Log'); return l.slice(Math.max(0, l.length - 300)).reverse(); }
 
-  var READ = { bootstrap: bootstrap, kmbList: kmbList, photos: photos, backups: backups, log: logList, exportAll: exportAll };
+  var READ = { fileGet: fileGet, bootstrap: bootstrap, kmbList: kmbList, photos: photos, backups: backups, log: logList, exportAll: exportAll };
   var WRITE = {
     save: save, remove: remove, kmbBulk: kmbBulk, userSave: userSave, userDelete: userDelete,
-    changePassword: changePassword, okrugSave: okrugSave, passportSave: passportSave, planSave: planSave, importAll: importAll, backupNow: backupNow,
+    changePassword: changePassword, okrugSave: okrugSave, passportSave: passportSave, fileUpload: fileUpload, fileDelete: fileDelete, planSave: planSave, importAll: importAll, backupNow: backupNow,
     logout: function (S, me, req) { S.removeWhere('Sessions', function (s) { return s.token === req.token; }); return {}; }
   };
 
