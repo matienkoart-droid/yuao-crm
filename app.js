@@ -11,8 +11,8 @@
     if (!demoStore.rows('Users').length) CRM.createAdmin(demoStore, 'admin', 'admin123');
   }
 
-  var S = { token: lsGet(TOKEN_KEY), me: null, okrugs: [], plan: [], users: [], candidates: [], events: [], media: [], interviews: [], stats: {}, photos: {}, geo: null };
-  var UI = { month: null, mode: 'month', layer: 'traffic', uikF: { q: '', district: '', okrug: '' }, selOkrug: null, candF: { okrug: '', status: '', q: '' }, evF: { month: '', okrug: '', status: '' }, ivF: { okrug: '', status: 'upcoming' }, mdF: { kind: '', network: '', okrug: '', q: '' }, kmbF: { q: '', okrug: '', offset: 0 } };
+  var S = { token: lsGet(TOKEN_KEY), me: null, okrugs: [], plan: [], users: [], candidates: [], events: [], media: [], interviews: [], passports: [], stats: {}, photos: {}, geo: null };
+  var UI = { pOkrug: '', month: null, mode: 'month', layer: 'traffic', uikF: { q: '', district: '', okrug: '' }, selOkrug: null, candF: { okrug: '', status: '', q: '' }, evF: { month: '', okrug: '', status: '' }, ivF: { okrug: '', status: 'upcoming' }, mdF: { kind: '', network: '', okrug: '', q: '' }, kmbF: { q: '', okrug: '', offset: 0 } };
   var app = document.getElementById('app');
   var map = null, geoLayer = null, labelLayer = null, districtLayer = null;
 
@@ -165,11 +165,11 @@
 
   /* ---------- иконки ---------- */
   // Иконки Tabler Icons (MIT), outline, stroke 1.75
-  var ICONS = {"calplus": "<path d=\"M12.5 21h-6.5a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v5\"/><path d=\"M16 3v4\"/><path d=\"M8 3v4\"/><path d=\"M4 11h16\"/><path d=\"M16 19h6\"/><path d=\"M19 16v6\"/>", "eye": "<path d=\"M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0\"/><path d=\"M21 12c-2.4 4 -5.4 6 -9 6c-3.6 0 -6.6 -2 -9 -6c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6\"/>", "eyeoff": "<path d=\"M10.585 10.587a2 2 0 0 0 2.829 2.828\"/><path d=\"M16.681 16.673a8.717 8.717 0 0 1 -4.681 1.327c-3.6 0 -6.6 -2 -9 -6c1.272 -2.12 2.712 -3.678 4.32 -4.674m2.86 -1.146a9.055 9.055 0 0 1 1.82 -.18c3.6 0 6.6 2 9 6c-.666 1.11 -1.379 2.067 -2.138 2.87\"/><path d=\"M3 3l18 18\"/>", "uik": "<path d=\"M9 11l3 3l8 -8\"/><path d=\"M20 12v6a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2h9\"/>", "interviews": "<path d=\"M12 21h-6a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v4.5\"/><path d=\"M16 3v4\"/><path d=\"M8 3v4\"/><path d=\"M4 11h16\"/><path d=\"M19 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0\"/><path d=\"M22 22a2 2 0 0 0 -2 -2h-2a2 2 0 0 0 -2 2\"/>", "media": "<path d=\"M18 8a3 3 0 0 1 0 6\"/><path d=\"M10 8v11a1 1 0 0 1 -1 1h-1a1 1 0 0 1 -1 -1v-5\"/><path d=\"M12 8h0l4.524 -3.77a.9 .9 0 0 1 1.476 .692v12.156a.9 .9 0 0 1 -1.476 .692l-4.524 -3.77h-8a1 1 0 0 1 -1 -1v-4a1 1 0 0 1 1 -1h8\"/>", "link": "<path d=\"M12 6h-6a2 2 0 0 0 -2 2v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-6\"/><path d=\"M11 13l9 -9\"/><path d=\"M15 4h5v5\"/>", "usercheck": "<path d=\"M8 7a4 4 0 1 0 8 0a4 4 0 0 0 -8 0\"/><path d=\"M6 21v-2a4 4 0 0 1 4 -4h4\"/><path d=\"M15 19l2 2l4 -4\"/>", "dashboard": "<path d=\"M5 4h4a1 1 0 0 1 1 1v6a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1v-6a1 1 0 0 1 1 -1\"/><path d=\"M5 16h4a1 1 0 0 1 1 1v2a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1v-2a1 1 0 0 1 1 -1\"/><path d=\"M15 12h4a1 1 0 0 1 1 1v6a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1v-6a1 1 0 0 1 1 -1\"/><path d=\"M15 4h4a1 1 0 0 1 1 1v2a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1v-2a1 1 0 0 1 1 -1\"/>", "map": "<path d=\"M12 18.5l-3 -1.5l-6 3v-13l6 -3l6 3l6 -3v7.5\"/><path d=\"M9 4v13\"/><path d=\"M15 7v5.5\"/><path d=\"M21.121 20.121a3 3 0 1 0 -4.242 0c.418 .419 1.125 1.045 2.121 1.879c1.051 -.89 1.759 -1.516 2.121 -1.879z\"/><path d=\"M19 18v.01\"/>", "okrugs": "<path d=\"M13 5h8\"/><path d=\"M13 9h5\"/><path d=\"M13 15h8\"/><path d=\"M13 19h5\"/><path d=\"M3 4m0 1a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1z\"/><path d=\"M3 14m0 1a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1z\"/>", "candidates": "<path d=\"M9 7m-4 0a4 4 0 1 0 8 0a4 4 0 1 0 -8 0\"/><path d=\"M3 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2\"/><path d=\"M16 3.13a4 4 0 0 1 0 7.75\"/><path d=\"M21 21v-2a4 4 0 0 0 -3 -3.85\"/>", "events": "<path d=\"M4 5m0 2a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2z\"/><path d=\"M16 3l0 4\"/><path d=\"M8 3l0 4\"/><path d=\"M4 11l16 0\"/><path d=\"M8 15h2v2h-2z\"/>", "kmb": "<path d=\"M20 6v12a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2z\"/><path d=\"M10 16h6\"/><path d=\"M13 11m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0\"/><path d=\"M4 8h3\"/><path d=\"M4 12h3\"/><path d=\"M4 16h3\"/>", "team": "<path d=\"M10 13a2 2 0 1 0 4 0a2 2 0 0 0 -4 0\"/><path d=\"M8 21v-1a2 2 0 0 1 2 -2h4a2 2 0 0 1 2 2v1\"/><path d=\"M15 5a2 2 0 1 0 4 0a2 2 0 0 0 -4 0\"/><path d=\"M17 10h2a2 2 0 0 1 2 2v1\"/><path d=\"M5 5a2 2 0 1 0 4 0a2 2 0 0 0 -4 0\"/><path d=\"M3 13v-1a2 2 0 0 1 2 -2h2\"/>", "plan": "<path d=\"M3 13a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v6a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1z\"/><path d=\"M15 9a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v10a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1z\"/><path d=\"M9 5a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v14a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1z\"/><path d=\"M4 20h14\"/>", "backup": "<path d=\"M4 6c0 1.657 3.582 3 8 3s8 -1.343 8 -3s-3.582 -3 -8 -3s-8 1.343 -8 3\"/><path d=\"M4 6v6c0 1.657 3.582 3 8 3c1.118 0 2.183 -.086 3.15 -.241\"/><path d=\"M20 12v-6\"/><path d=\"M4 12v6c0 1.657 3.582 3 8 3c.157 0 .312 -.002 .466 -.005\"/><path d=\"M16 19h6\"/><path d=\"M19 16l3 3l-3 3\"/>", "profile": "<path d=\"M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0\"/><path d=\"M12 10m-3 0a3 3 0 1 0 6 0a3 3 0 1 0 -6 0\"/><path d=\"M6.168 18.849a4 4 0 0 1 3.832 -2.849h4a4 4 0 0 1 3.834 2.855\"/>", "menu": "<path d=\"M4 6l16 0\"/><path d=\"M4 12l16 0\"/><path d=\"M4 18l16 0\"/>", "refresh": "<path d=\"M20 11a8.1 8.1 0 0 0 -15.5 -2m-.5 -4v4h4\"/><path d=\"M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4\"/>", "x": "<path d=\"M18 6l-12 12\"/><path d=\"M6 6l12 12\"/>", "check": "<path d=\"M5 12l5 5l10 -10\"/>", "left": "<path d=\"M15 6l-6 6l6 6\"/>", "right": "<path d=\"M9 6l6 6l-6 6\"/>", "plus": "<path d=\"M12 5l0 14\"/><path d=\"M5 12l14 0\"/>", "upload": "<path d=\"M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2\"/><path d=\"M7 9l5 -5l5 5\"/><path d=\"M12 4l0 12\"/>", "download": "<path d=\"M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2\"/><path d=\"M7 11l5 5l5 -5\"/><path d=\"M12 4l0 12\"/>", "search": "<path d=\"M10 10m-7 0a7 7 0 1 0 14 0a7 7 0 1 0 -14 0\"/><path d=\"M21 21l-6 -6\"/>", "logout": "<path d=\"M14 8v-2a2 2 0 0 0 -2 -2h-7a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h7a2 2 0 0 0 2 -2v-2\"/><path d=\"M9 12h12l-3 -3\"/><path d=\"M18 15l3 -3\"/>"};
+  var ICONS = {"passport": "<path d=\"M14 3v4a1 1 0 0 0 1 1h4\"/><path d=\"M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2z\"/><path d=\"M9 17h6\"/><path d=\"M9 13h6\"/>", "xls": "<path d=\"M14 3v4a1 1 0 0 0 1 1h4\"/><path d=\"M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2z\"/><path d=\"M8 11h8v7h-8z\"/><path d=\"M8 15h8\"/><path d=\"M11 11v7\"/>", "doc": "<path d=\"M14 3v4a1 1 0 0 0 1 1h4\"/><path d=\"M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2\"/><path d=\"M9 12l1.333 5l1.667 -4l1.667 4l1.333 -5\"/>", "calplus": "<path d=\"M12.5 21h-6.5a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v5\"/><path d=\"M16 3v4\"/><path d=\"M8 3v4\"/><path d=\"M4 11h16\"/><path d=\"M16 19h6\"/><path d=\"M19 16v6\"/>", "eye": "<path d=\"M10 12a2 2 0 1 0 4 0a2 2 0 0 0 -4 0\"/><path d=\"M21 12c-2.4 4 -5.4 6 -9 6c-3.6 0 -6.6 -2 -9 -6c2.4 -4 5.4 -6 9 -6c3.6 0 6.6 2 9 6\"/>", "eyeoff": "<path d=\"M10.585 10.587a2 2 0 0 0 2.829 2.828\"/><path d=\"M16.681 16.673a8.717 8.717 0 0 1 -4.681 1.327c-3.6 0 -6.6 -2 -9 -6c1.272 -2.12 2.712 -3.678 4.32 -4.674m2.86 -1.146a9.055 9.055 0 0 1 1.82 -.18c3.6 0 6.6 2 9 6c-.666 1.11 -1.379 2.067 -2.138 2.87\"/><path d=\"M3 3l18 18\"/>", "uik": "<path d=\"M9 11l3 3l8 -8\"/><path d=\"M20 12v6a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2h9\"/>", "interviews": "<path d=\"M12 21h-6a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v4.5\"/><path d=\"M16 3v4\"/><path d=\"M8 3v4\"/><path d=\"M4 11h16\"/><path d=\"M19 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0\"/><path d=\"M22 22a2 2 0 0 0 -2 -2h-2a2 2 0 0 0 -2 2\"/>", "media": "<path d=\"M18 8a3 3 0 0 1 0 6\"/><path d=\"M10 8v11a1 1 0 0 1 -1 1h-1a1 1 0 0 1 -1 -1v-5\"/><path d=\"M12 8h0l4.524 -3.77a.9 .9 0 0 1 1.476 .692v12.156a.9 .9 0 0 1 -1.476 .692l-4.524 -3.77h-8a1 1 0 0 1 -1 -1v-4a1 1 0 0 1 1 -1h8\"/>", "link": "<path d=\"M12 6h-6a2 2 0 0 0 -2 2v10a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-6\"/><path d=\"M11 13l9 -9\"/><path d=\"M15 4h5v5\"/>", "usercheck": "<path d=\"M8 7a4 4 0 1 0 8 0a4 4 0 0 0 -8 0\"/><path d=\"M6 21v-2a4 4 0 0 1 4 -4h4\"/><path d=\"M15 19l2 2l4 -4\"/>", "dashboard": "<path d=\"M5 4h4a1 1 0 0 1 1 1v6a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1v-6a1 1 0 0 1 1 -1\"/><path d=\"M5 16h4a1 1 0 0 1 1 1v2a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1v-2a1 1 0 0 1 1 -1\"/><path d=\"M15 12h4a1 1 0 0 1 1 1v6a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1v-6a1 1 0 0 1 1 -1\"/><path d=\"M15 4h4a1 1 0 0 1 1 1v2a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1v-2a1 1 0 0 1 1 -1\"/>", "map": "<path d=\"M12 18.5l-3 -1.5l-6 3v-13l6 -3l6 3l6 -3v7.5\"/><path d=\"M9 4v13\"/><path d=\"M15 7v5.5\"/><path d=\"M21.121 20.121a3 3 0 1 0 -4.242 0c.418 .419 1.125 1.045 2.121 1.879c1.051 -.89 1.759 -1.516 2.121 -1.879z\"/><path d=\"M19 18v.01\"/>", "okrugs": "<path d=\"M13 5h8\"/><path d=\"M13 9h5\"/><path d=\"M13 15h8\"/><path d=\"M13 19h5\"/><path d=\"M3 4m0 1a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1z\"/><path d=\"M3 14m0 1a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v4a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1z\"/>", "candidates": "<path d=\"M9 7m-4 0a4 4 0 1 0 8 0a4 4 0 1 0 -8 0\"/><path d=\"M3 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2\"/><path d=\"M16 3.13a4 4 0 0 1 0 7.75\"/><path d=\"M21 21v-2a4 4 0 0 0 -3 -3.85\"/>", "events": "<path d=\"M4 5m0 2a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2z\"/><path d=\"M16 3l0 4\"/><path d=\"M8 3l0 4\"/><path d=\"M4 11l16 0\"/><path d=\"M8 15h2v2h-2z\"/>", "kmb": "<path d=\"M20 6v12a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2v-12a2 2 0 0 1 2 -2h10a2 2 0 0 1 2 2z\"/><path d=\"M10 16h6\"/><path d=\"M13 11m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0\"/><path d=\"M4 8h3\"/><path d=\"M4 12h3\"/><path d=\"M4 16h3\"/>", "team": "<path d=\"M10 13a2 2 0 1 0 4 0a2 2 0 0 0 -4 0\"/><path d=\"M8 21v-1a2 2 0 0 1 2 -2h4a2 2 0 0 1 2 2v1\"/><path d=\"M15 5a2 2 0 1 0 4 0a2 2 0 0 0 -4 0\"/><path d=\"M17 10h2a2 2 0 0 1 2 2v1\"/><path d=\"M5 5a2 2 0 1 0 4 0a2 2 0 0 0 -4 0\"/><path d=\"M3 13v-1a2 2 0 0 1 2 -2h2\"/>", "plan": "<path d=\"M3 13a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v6a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1z\"/><path d=\"M15 9a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v10a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1z\"/><path d=\"M9 5a1 1 0 0 1 1 -1h4a1 1 0 0 1 1 1v14a1 1 0 0 1 -1 1h-4a1 1 0 0 1 -1 -1z\"/><path d=\"M4 20h14\"/>", "backup": "<path d=\"M4 6c0 1.657 3.582 3 8 3s8 -1.343 8 -3s-3.582 -3 -8 -3s-8 1.343 -8 3\"/><path d=\"M4 6v6c0 1.657 3.582 3 8 3c1.118 0 2.183 -.086 3.15 -.241\"/><path d=\"M20 12v-6\"/><path d=\"M4 12v6c0 1.657 3.582 3 8 3c.157 0 .312 -.002 .466 -.005\"/><path d=\"M16 19h6\"/><path d=\"M19 16l3 3l-3 3\"/>", "profile": "<path d=\"M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0\"/><path d=\"M12 10m-3 0a3 3 0 1 0 6 0a3 3 0 1 0 -6 0\"/><path d=\"M6.168 18.849a4 4 0 0 1 3.832 -2.849h4a4 4 0 0 1 3.834 2.855\"/>", "menu": "<path d=\"M4 6l16 0\"/><path d=\"M4 12l16 0\"/><path d=\"M4 18l16 0\"/>", "refresh": "<path d=\"M20 11a8.1 8.1 0 0 0 -15.5 -2m-.5 -4v4h4\"/><path d=\"M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4\"/>", "x": "<path d=\"M18 6l-12 12\"/><path d=\"M6 6l12 12\"/>", "check": "<path d=\"M5 12l5 5l10 -10\"/>", "left": "<path d=\"M15 6l-6 6l6 6\"/>", "right": "<path d=\"M9 6l6 6l-6 6\"/>", "plus": "<path d=\"M12 5l0 14\"/><path d=\"M5 12l14 0\"/>", "upload": "<path d=\"M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2\"/><path d=\"M7 9l5 -5l5 5\"/><path d=\"M12 4l0 12\"/>", "download": "<path d=\"M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2 -2v-2\"/><path d=\"M7 11l5 5l5 -5\"/><path d=\"M12 4l0 12\"/>", "search": "<path d=\"M10 10m-7 0a7 7 0 1 0 14 0a7 7 0 1 0 -14 0\"/><path d=\"M21 21l-6 -6\"/>", "logout": "<path d=\"M14 8v-2a2 2 0 0 0 -2 -2h-7a2 2 0 0 0 -2 2v12a2 2 0 0 0 2 2h7a2 2 0 0 0 2 -2v-2\"/><path d=\"M9 12h12l-3 -3\"/><path d=\"M18 15l3 -3\"/>"};
   function icon(n) { return '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + ICONS[n] + '</svg>'; }
 
   var VIEWS = [
-    ['dashboard', 'Сводка'], ['map', 'Карта'], ['okrugs', 'Округа'], ['interviews', 'Встречи с кандидатами'], ['candidates', 'Кандидаты'],
+    ['dashboard', 'Сводка'], ['map', 'Карта'], ['okrugs', 'Округа'], ['passport', 'Паспорта округов'], ['interviews', 'Встречи с кандидатами'], ['candidates', 'Кандидаты'],
     ['events', 'Мероприятия'], ['kmb', 'КМБ'], ['media', 'Медиа'], ['uik', 'УИК'], ['team', 'Команда'], ['plan', 'План KPI', true], ['backup', 'Резерв', true], ['profile', 'Профиль']
   ];
 
@@ -212,7 +212,7 @@
     loading = api('bootstrap').then(function (d) {
       if (!d || !d.me) throw new Error('Сервер вернул пустой ответ');
       S.me = d.me; S.okrugs = d.okrugs; S.plan = d.plan; S.users = d.users; S.credUrl = d.credUrl || '';
-      S.candidates = d.candidates; S.events = d.events; S.media = d.media || []; S.interviews = d.interviews || []; S.stats = d.stats;
+      S.candidates = d.candidates; S.events = d.events; S.media = d.media || []; S.interviews = d.interviews || []; S.passports = d.passports || []; S.stats = d.stats;
       if (!UI.month || campaignMonths().indexOf(UI.month) < 0) UI.month = defaultMonth();
       if (!UI.evF.month) UI.evF.month = curMonth();
       var y = window.scrollY, onMap = route() === 'map' && !first;
@@ -248,7 +248,7 @@
     var main = $('#main');
     if (DEMO) main.insertAdjacentHTML('afterbegin', '<div class="demo-banner">Демо-режим: данные хранятся только в этом браузере. Чтобы подключить общий сервер (Google Таблицу), см. инструкцию.</div>');
     var box = document.createElement('div'); main.appendChild(box);
-    ({ uik: viewUik, interviews: viewInterviews, media: viewMedia, dashboard: viewDashboard, map: viewMap, okrugs: viewOkrugs, candidates: viewCandidates, events: viewEvents, kmb: viewKmb, team: viewTeam, plan: viewPlan, backup: viewBackup, profile: viewProfile })[v](box);
+    ({ passport: viewPassport, uik: viewUik, interviews: viewInterviews, media: viewMedia, dashboard: viewDashboard, map: viewMap, okrugs: viewOkrugs, candidates: viewCandidates, events: viewEvents, kmb: viewKmb, team: viewTeam, plan: viewPlan, backup: viewBackup, profile: viewProfile })[v](box);
   }
   window.addEventListener('hashchange', function () { if (S.me) render(); });
 
@@ -531,7 +531,7 @@
       (o.note ? '<p class="small" style="white-space:pre-wrap">' + esc(o.note) + '</p>' : '') +
       (geoProps(oid).source ? '<p class="sub">Схема: ' + esc(geoProps(oid).source) + '</p>' : '') +
       '<div class="actions">' +
-      '<button class="btn sm" data-go="candidates">Кандидаты</button><button class="btn sm" data-go="events">Мероприятия</button><button class="btn sm" data-go="kmb">КМБ</button>' +
+      '<button class="btn sm" data-go="passport">Паспорт</button><button class="btn sm" data-go="candidates">Кандидаты</button><button class="btn sm" data-go="events">Мероприятия</button><button class="btn sm" data-go="kmb">КМБ</button>' +
       (canEdit(oid, 'events') ? '<button class="btn sm primary" data-add-ev>' + icon('plus') + 'Мероприятие</button>' : '') +
       ((isAdmin() || (S.me.role === 'coord' && S.me.zone === o.zone)) ? '<button class="btn sm" data-edit-okr>Изменить</button>' : '') +
       '</div>';
@@ -542,6 +542,7 @@
       b.onclick = function () {
         var v = b.dataset.go;
         if (v === 'candidates') UI.candF.okrug = oid;
+        if (v === 'passport') UI.pOkrug = oid;
         if (v === 'events') { UI.evF.okrug = oid; UI.evF.month = UI.mode === 'cum' ? '' : UI.month; }
         if (v === 'kmb') { UI.kmbF.okrug = oid; UI.kmbF.offset = 0; }
         $all('.modal-bg').forEach(function (x) { x.remove(); });
@@ -595,6 +596,196 @@
         bindOkrugCard(md.el, oid);
       };
     });
+  }
+
+
+  /* ================= ПАСПОРТА ОКРУГОВ ================= */
+  var PASS_FIELDS = [['objects', 'Ключевые объекты', 'Школы, поликлиники, ТЦ, парки, точки сбора жителей'], ['problems', 'Проблемы округа', 'Что волнует жителей: дороги, стройки, транспорт, ЖКХ'],
+    ['leaders', 'Лидеры мнений', 'Активные жители, председатели советов домов, админы чатов'], ['competitors', 'Конкуренты', 'Действующие депутаты, другие кандидаты и их ресурс'],
+    ['features', 'Особенности', 'Состав жителей, настроения, что работает в агитации']];
+  function loadAddr() {
+    if (S.addr) return Promise.resolve(S.addr);
+    return fetch('data/okruga-2022.json?v=' + (window.CRM_BUILD || '')).then(function (r) { return r.json(); }).then(function (d) { S.addr = d; return d; });
+  }
+  function loadScript(url, global) {
+    if (window[global]) return Promise.resolve(window[global]);
+    return new Promise(function (ok, no) {
+      var sc = document.createElement('script'); sc.src = url;
+      sc.onload = function () { window[global] ? ok(window[global]) : no(new Error('Библиотека не загрузилась')); };
+      sc.onerror = function () { no(new Error('Не удалось загрузить библиотеку — проверьте интернет')); };
+      document.head.appendChild(sc);
+    });
+  }
+
+  // Все сведения по округу в одном объекте — для экрана, Word и Excel
+  function passportData(oid) {
+    var o = okrug(oid), pass = S.passports.filter(function (p) { return p.okrug === oid; })[0] || {};
+    var em = evalOkrug(oid, UI.month, 'month'), ec = evalOkrug(oid, UI.month, 'cum');
+    var intern = internOf(oid), coords = coordOf(o.zone);
+    var cands = S.candidates.filter(function (c) { return c.okrug === oid; }).sort(function (a, b) { return a.fio.localeCompare(b.fio); });
+    var inScopeOk = myOkrugs().indexOf(oid) >= 0;
+    var uiks = (S.uik ? S.uik.uiks : []).filter(function (u) { return u.okrugs[oid]; }).map(function (u) {
+      return { number: u.number, place: u.place, address: u.address, phone: u.phone, houses: u.okrugs[oid], shared: Object.keys(u.okrugs).length > 1 };
+    });
+    var addr = S.addr && S.addr[oid];
+    var st = S.stats[oid] || { kmb: {}, ev: {} }, kmbAll = 0, evAll = [0, 0];
+    Object.keys(st.kmb).forEach(function (k) { kmbAll += st.kmb[k]; });
+    Object.keys(st.ev).forEach(function (k) { evAll[0] += st.ev[k][0]; evAll[1] += st.ev[k][1]; });
+    var item = function (e, key) { var i = e.by[key]; return i ? i.fact + (i.plan ? ' из ' + i.plan : '') : '—'; };
+    return {
+      o: o, pass: pass,
+      main: [['Избирательный округ', o.name], ['Район', o.district], ['Зона', o.zone + ' — ' + CRM.ZONES[o.zone]], ['Мандатов', o.mandates],
+        ['Избирателей (по схеме округов)', fmt(o.voters)], ['Координатор зоны', coords.map(function (u) { return u.name + (u.phone ? ', ' + u.phone : ''); }).join('; ') || 'не назначен'],
+        ['Стажёр', intern ? intern.name + (intern.phone ? ', ' + intern.phone : '') : 'не назначен'], ['Схема округа', addr ? addr.source : '—']],
+      plan: [['Выполнение плана за ' + monthName(UI.month), em.ratio == null ? '—' : Math.round(em.ratio * 100) + '%'], ['Нарастающим итогом', ec.ratio == null ? '—' : Math.round(ec.ratio * 100) + '%'],
+        ['Кандидаты', item(em, 'cand')], ['Встречи за месяц', item(em, 'meet')], ['Акции за месяц', item(em, 'act')], ['КМБ за месяц', item(em, 'kmb')],
+        ['КМБ всего в базе', fmt(kmbAll)], ['Проведено встреч / акций за всё время', evAll[0] + ' / ' + evAll[1]]],
+      cands: inScopeOk ? cands : null, candCount: (S.stats[oid] || {}).cand || 0,
+      media: S.media.filter(function (m) { return m.okrug === oid; }),
+      uiks: uiks, streets: addr ? addr.streets : []
+    };
+  }
+
+  function viewPassport(box) {
+    var oid = UI.pOkrug || UI.selOkrug || myOkrugs()[0] || S.okrugs[0].id;
+    UI.pOkrug = oid;
+    box.innerHTML = '<div class="head"><div><h1>Паспорт округа</h1><div class="sub">Справка по избирательному округу: территория, участки, команда, кандидаты, план</div></div><div class="tools">' +
+      '<select class="input" id="pO">' + okrugOptions(oid, { all: true }) + '</select>' +
+      '<button class="btn" id="pDoc">' + icon('doc') + 'Word</button><button class="btn" id="pDocD">' + icon('doc') + 'Word: весь район</button>' +
+      '<button class="btn" id="pXls">' + icon('xls') + 'Excel</button><button class="btn" id="pXlsAll">' + icon('xls') + 'Excel: все 33 округа</button></div></div>' +
+      '<div id="pBox"><div class="card empty">Загрузка…</div></div>';
+    $('#pO').onchange = function (e) { UI.pOkrug = e.target.value; render(); };
+    var run = function (btn, fn) { btn.disabled = true; var t = btn.innerHTML; btn.innerHTML = 'Готовлю файл…'; Promise.resolve().then(fn).then(function () { toast('Файл скачан'); }).catch(fail).then(function () { btn.disabled = false; btn.innerHTML = t; }); };
+    $('#pDoc').onclick = function () { run(this, function () { return exportWord([oid], 'Паспорт — ' + okrugName(oid)); }); };
+    $('#pDocD').onclick = function () { var d = okrug(oid).district; run(this, function () { return exportWord(S.okrugs.filter(function (o) { return o.district === d; }).map(function (o) { return o.id; }), 'Паспорт района ' + d); }); };
+    $('#pXls').onclick = function () { run(this, function () { return exportExcel([oid], 'Паспорт — ' + okrugName(oid)); }); };
+    $('#pXlsAll').onclick = function () { run(this, function () { return exportExcel(S.okrugs.map(function (o) { return o.id; }), 'Паспорта округов ЮАО'); }); };
+    Promise.all([loadUik().catch(function () { }), loadAddr().catch(function () { })]).then(function () { drawPassport(oid); });
+  }
+
+  function kvTable(rows) { return '<table class="tbl kv"><tbody>' + rows.map(function (r) { return '<tr><th>' + esc(r[0]) + '</th><td>' + esc(r[1]) + '</td></tr>'; }).join('') + '</tbody></table>'; }
+
+  function drawPassport(oid) {
+    var box = $('#pBox'); if (!box) return;
+    var d = passportData(oid), canEditP = myOkrugs().indexOf(oid) >= 0;
+    var desc = PASS_FIELDS.map(function (f) { return '<div class="pf"><h3>' + f[1] + '</h3>' + (d.pass[f[0]] ? '<p>' + esc(d.pass[f[0]]) + '</p>' : '<p class="muted">не заполнено</p>') + '</div>'; }).join('');
+    box.innerHTML =
+      '<div class="grid two" style="margin-bottom:var(--s4)">' +
+      '<div class="card"><h2>Основное</h2>' + kvTable(d.main) + '</div>' +
+      '<div class="card"><h2>План и работа</h2>' + kvTable(d.plan) + '</div></div>' +
+      '<div class="card" style="margin-bottom:var(--s4)"><div class="head" style="margin-bottom:var(--s3)"><h2 style="margin:0">Описание округа</h2>' +
+      (canEditP ? '<button class="btn sm" id="pEdit">Изменить</button>' : '') + '</div>' + desc +
+      (d.pass.updated ? '<p class="sub">Обновлено ' + dateRu(d.pass.updated) + (d.pass.updatedBy ? ', ' + esc(d.pass.updatedBy) : '') + '</p>' : '') + '</div>' +
+      '<div class="card" style="margin-bottom:var(--s4)"><h2>Кандидаты (' + (d.cands ? d.cands.length : d.candCount) + ' из ' + d.o.mandates + ')</h2>' +
+      (d.cands ? (d.cands.length ? '<div class="tbl-wrap" style="box-shadow:none"><table class="tbl"><thead><tr><th>ФИО</th><th>Статус</th><th class="num">Бюджет</th><th>Телефон</th></tr></thead><tbody>' +
+        d.cands.map(function (c) { return '<tr><td>' + esc(c.fio) + '</td><td>' + esc(c.status) + '</td><td class="num">' + money(c.budget) + '</td><td class="nowrap">' + esc(c.phone) + '</td></tr>'; }).join('') + '</tbody></table></div>' : '<p class="muted">Кандидатов пока нет.</p>')
+        : '<p class="muted">Список кандидатов этого округа видят руководитель, координатор зоны и стажёр округа.</p>') + '</div>' +
+      '<div class="card" style="margin-bottom:var(--s4)"><h2>Медиа (' + d.media.length + ')</h2>' +
+      (d.media.length ? kvTable(d.media.map(function (m) { return [CRM.MEDIA_KINDS[m.kind] + ', ' + m.network, (m.title || m.url) + (m.subscribers ? ' — ' + fmt(m.subscribers) + ' подп.' : '')]; })) : '<p class="muted">Каналов пока нет.</p>') + '</div>' +
+      '<div class="card" style="margin-bottom:var(--s4)"><h2>Избирательные участки (' + d.uiks.length + ')</h2>' +
+      (d.uiks.length ? '<div class="tbl-wrap" style="box-shadow:none"><table class="tbl"><thead><tr><th class="num">УИК</th><th>Пункт голосования</th><th class="num">Домов в округе</th></tr></thead><tbody>' +
+        d.uiks.map(function (u) { return '<tr><td class="num"><b>' + u.number + '</b></td><td>' + esc(u.place) + '<div class="sub">' + esc(u.address) + (u.phone ? ', ' + esc(u.phone) : '') + (u.shared ? ' · участок частично в соседнем округе' : '') + '</div></td><td class="num">' + u.houses + '</td></tr>'; }).join('') + '</tbody></table></div>' : '<p class="muted">Нет данных.</p>') + '</div>' +
+      '<div class="card"><h2>Территория: улицы и дома</h2>' + (d.streets.length ? d.streets.map(function (x) { return '<p class="small" style="margin:0 0 var(--s2)"><b>' + esc(x[0]) + ':</b> ' + esc(x[1]) + '</p>'; }).join('') : '<p class="muted">Нет данных.</p>') + '</div>';
+    var e = $('#pEdit'); if (e) e.onclick = function () { editPassport(oid); };
+  }
+
+  function editPassport(oid) {
+    var p = S.passports.filter(function (x) { return x.okrug === oid; })[0] || {};
+    var m = modal('Описание: ' + okrugName(oid), '<form id="psF">' + PASS_FIELDS.map(function (f) {
+      return '<label class="f"><span>' + f[1] + '</span><textarea class="input" name="' + f[0] + '" rows="3" placeholder="' + esc(f[2]) + '">' + esc(p[f[0]]) + '</textarea></label>';
+    }).join('') + '</form>', '<button class="btn" data-c>Отмена</button><button class="btn primary" data-s>Сохранить</button>', true);
+    $('[data-c]', m.el).onclick = m.close;
+    $('[data-s]', m.el).onclick = function (ev) {
+      var it = formData($('#psF', m.el)); it.okrug = oid; busy(ev.target, true);
+      api('passportSave', { item: it }).then(function (rec) {
+        S.passports = S.passports.filter(function (x) { return x.okrug !== oid; }).concat([rec]);
+        m.close(); toast('Сохранено'); drawPassport(oid);
+      }).catch(function (e) { busy(ev.target, false); fail(e); });
+    };
+  }
+
+  function fileName(t) { return String(t).replace(/[\\/:*?"<>|]/g, '').replace(/\s+/g, ' ').slice(0, 80); }
+
+  // Word (.docx): один или несколько паспортов, каждый с новой страницы
+  function exportWord(ids, title) {
+    return Promise.all([loadUik().catch(function () { }), loadAddr().catch(function () { }), loadScript('https://unpkg.com/docx@8.5.0/build/index.umd.js', 'docx')]).then(function (r) {
+      var D = r[2], F = 'Arial';
+      var P = function (text, o) { o = o || {}; return new D.Paragraph({ spacing: { after: o.after == null ? 80 : o.after }, pageBreakBefore: !!o.br, heading: o.h, children: [new D.TextRun({ text: String(text == null ? '' : text), bold: !!o.b, size: o.size || 20, font: F, color: o.color })] }); };
+      var cell = function (t, head, w) { return new D.TableCell({ width: w ? { size: w, type: D.WidthType.PERCENTAGE } : undefined, shading: head ? { fill: 'E8EEF6' } : undefined, children: [P(t, { b: head, after: 0 })] }); };
+      var table = function (head, rows, widths) {
+        return new D.Table({ width: { size: 100, type: D.WidthType.PERCENTAGE }, rows: (head ? [new D.TableRow({ tableHeader: true, children: head.map(function (h, i) { return cell(h, true, widths && widths[i]); }) })] : [])
+          .concat(rows.map(function (row) { return new D.TableRow({ children: row.map(function (c, i) { return cell(c, !head && i === 0, widths && widths[i]); }) }); })) });
+      };
+      var H = function (t) { return P(t, { b: true, size: 24, after: 120 }); };
+      var body = [];
+      ids.forEach(function (oid, n) {
+        var d = passportData(oid);
+        body.push(P('Паспорт избирательного округа', { br: n > 0, size: 20, color: '666666', after: 40 }));
+        body.push(P(d.o.name, { b: true, size: 36, after: 60 }));
+        body.push(P('Муниципальные выборы 2027 · ЮАО · сформирован ' + dateRu(todayMsk()), { size: 18, color: '666666', after: 240 }));
+        body.push(H('Основное')); body.push(table(null, d.main, [40, 60])); body.push(P('', { after: 200 }));
+        body.push(H('План и работа')); body.push(table(null, d.plan, [40, 60])); body.push(P('', { after: 200 }));
+        body.push(H('Описание округа'));
+        PASS_FIELDS.forEach(function (f) { body.push(P(f[1], { b: true, after: 40 })); body.push(P(d.pass[f[0]] || '—', { after: 140 })); });
+        body.push(H('Кандидаты'));
+        if (d.cands && d.cands.length) body.push(table(['ФИО', 'Статус', 'Бюджет', 'Телефон'], d.cands.map(function (c) { return [c.fio, c.status, c.budget ? fmt(c.budget) + ' ₽' : '—', c.phone || '']; }), [40, 20, 20, 20]));
+        else body.push(P(d.cands ? 'Кандидатов пока нет.' : 'Всего кандидатов: ' + d.candCount + ' (список доступен руководителю, координатору и стажёру округа).'));
+        body.push(P('', { after: 200 }));
+        body.push(H('Медиа'));
+        body.push(d.media.length ? table(['Канал', 'Тип и соцсеть', 'Подписчики'], d.media.map(function (m) { return [m.title || m.url, CRM.MEDIA_KINDS[m.kind] + ', ' + m.network, m.subscribers || '—']; }), [50, 30, 20]) : P('Каналов пока нет.'));
+        body.push(P('', { after: 200 }));
+        body.push(H('Избирательные участки (Госдума 2026)'));
+        body.push(d.uiks.length ? table(['УИК', 'Пункт голосования', 'Домов в округе'], d.uiks.map(function (u) { return [String(u.number), u.place + ', ' + u.address + (u.phone ? ', ' + u.phone : '') + (u.shared ? ' (участок частично в соседнем округе)' : ''), String(u.houses)]; }), [12, 70, 18]) : P('Нет данных.'));
+        body.push(P('', { after: 200 }));
+        body.push(H('Территория: улицы и дома'));
+        d.streets.forEach(function (x) { body.push(new D.Paragraph({ spacing: { after: 60 }, children: [new D.TextRun({ text: x[0] + ': ', bold: true, size: 18, font: F }), new D.TextRun({ text: x[1], size: 18, font: F })] })); });
+      });
+      var doc = new D.Document({ creator: 'CRM ЮАО', title: title, sections: [{ properties: { page: { margin: { top: 1000, bottom: 1000, left: 1100, right: 1000 } } }, children: body }] });
+      return D.Packer.toBlob(doc);
+    }).then(function (blob) { saveBlob(fileName(title) + '.docx', blob); });
+  }
+
+  // Excel (.xlsx): по одному округу — несколько листов; по всем — сводка + кандидаты + участки
+  function exportExcel(ids, title) {
+    return Promise.all([loadUik().catch(function () { }), loadAddr().catch(function () { }), loadScript('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js', 'XLSX')]).then(function (r) {
+      var X = r[2], wb = X.utils.book_new();
+      var sheet = function (name, aoa, widths) { var ws = X.utils.aoa_to_sheet(aoa); ws['!cols'] = (widths || []).map(function (w) { return { wch: w }; }); X.utils.book_append_sheet(wb, ws, name.slice(0, 31)); };
+      var data = ids.map(passportData);
+      if (ids.length === 1) {
+        var d = data[0];
+        sheet('Паспорт', [['Паспорт избирательного округа', d.o.name], []].concat(d.main, [[]], d.plan, [[]], PASS_FIELDS.map(function (f) { return [f[1], d.pass[f[0]] || '']; })), [36, 80]);
+      } else {
+        sheet('Сводка', [['Округ', 'Район', 'Зона', 'Мандатов', 'Избирателей', 'Координатор', 'Стажёр', 'Кандидатов', 'План месяца, %', 'Нарастающим, %', 'Встречи (мес.)', 'Акции (мес.)', 'КМБ (мес.)', 'КМБ всего', 'Медиа-каналов', 'УИК', 'Проблемы', 'Ключевые объекты']]
+          .concat(data.map(function (d) {
+            var g = function (k) { return (d.main.concat(d.plan).filter(function (x) { return x[0] === k; })[0] || [])[1]; };
+            return [d.o.name, d.o.district, d.o.zone, +d.o.mandates, +d.o.voters, g('Координатор зоны'), g('Стажёр'), d.cands ? d.cands.length : d.candCount,
+              g('Выполнение плана за ' + monthName(UI.month)), g('Нарастающим итогом'), g('Встречи за месяц'), g('Акции за месяц'), g('КМБ за месяц'), g('КМБ всего в базе'),
+              d.media.length, d.uiks.map(function (u) { return u.number; }).join(', '), d.pass.problems || '', d.pass.objects || ''];
+          })), [26, 22, 6, 9, 11, 26, 26, 10, 12, 12, 12, 12, 12, 10, 10, 30, 40, 40]);
+      }
+      var multi = ids.length > 1;
+      var cands = [], uiks = [], streets = [], media = [];
+      data.forEach(function (d) {
+        (d.cands || []).forEach(function (c) { cands.push((multi ? [d.o.name] : []).concat([c.fio, c.status, +c.budget || '', c.phone || '', c.description || ''])); });
+        d.uiks.forEach(function (u) { uiks.push((multi ? [d.o.name] : []).concat([u.number, u.place, u.address, u.phone, u.houses, u.shared ? 'да' : ''])); });
+        d.streets.forEach(function (x) { streets.push((multi ? [d.o.name] : []).concat([x[0], x[1]])); });
+        d.media.forEach(function (m) { media.push((multi ? [d.o.name] : []).concat([m.title || '', m.url || '', CRM.MEDIA_KINDS[m.kind], m.network, +m.subscribers || ''])); });
+      });
+      var pre = multi ? ['Округ'] : [];
+      sheet('Кандидаты', [pre.concat(['ФИО', 'Статус', 'Бюджет, ₽', 'Телефон', 'Описание'])].concat(cands), (multi ? [26] : []).concat([32, 18, 12, 18, 50]));
+      sheet('Участки (УИК)', [pre.concat(['УИК', 'Пункт голосования', 'Адрес', 'Телефон', 'Домов в округе', 'Частично в другом округе'])].concat(uiks), (multi ? [26] : []).concat([8, 50, 34, 18, 14, 12]));
+      sheet('Улицы и дома', [pre.concat(['Улица', 'Дома'])].concat(streets), (multi ? [26] : []).concat([32, 100]));
+      sheet('Медиа', [pre.concat(['Канал', 'Ссылка', 'Тип', 'Соцсеть', 'Подписчики'])].concat(media), (multi ? [26] : []).concat([32, 36, 18, 14, 12]));
+      var out = X.write(wb, { bookType: 'xlsx', type: 'array' });
+      saveBlob(fileName(title) + '.xlsx', new Blob([out], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+    });
+  }
+
+  function saveBlob(name, blob) {
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = name;
+    document.body.appendChild(a); a.click();
+    setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1500);
   }
 
   /* ================= КАНДИДАТЫ ================= */

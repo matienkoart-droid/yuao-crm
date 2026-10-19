@@ -21,6 +21,7 @@ var CRM = (function () {
     Media: ['id', 'okrug', 'kind', 'network', 'title', 'url', 'subscribers', 'candidateId', 'owner', 'status', 'started', 'notes', 'created', 'createdBy', 'updated'],
     Interviews: ['id', 'okrug', 'fio', 'phone', 'date', 'time', 'place', 'interviewer', 'attended', 'verdict', 'comment', 'candidateId', 'created', 'createdBy', 'updated'],
     Plan: ['month', 'meetings', 'actions', 'kmb'],
+    Passports: ['okrug', 'objects', 'problems', 'leaders', 'competitors', 'features', 'updated', 'updatedBy'],
     Log: ['ts', 'user', 'action', 'details'],
     // Лист для руководителя: открытые логины и пароли, которые он выдал. Сайт его никому не отдаёт.
     'Логины и пароли': ['Логин', 'Пароль', 'Имя', 'Роль', 'Зона или округ', 'Телефон', 'Доступ', 'Изменено', 'id']
@@ -389,6 +390,7 @@ var CRM = (function () {
       candidates: S.rows('Candidates').filter(function (c) { return sc[c.okrug]; }),
       events: S.rows('Events').filter(function (e) { return sc[e.okrug]; }),
       media: S.rows('Media'),
+      passports: S.rows('Passports'),
       interviews: me.role === 'member' ? [] : S.rows('Interviews').filter(function (i) { return sc[i.okrug]; }),
       stats: stats(S),
       server: S.kind,
@@ -477,6 +479,20 @@ var CRM = (function () {
     return { changed: true };
   }
 
+  // Паспорт округа: описательные поля. Править может любой, у кого этот округ в зоне ответственности.
+  var PASSPORT_FIELDS = ['objects', 'problems', 'leaders', 'competitors', 'features'];
+  function passportSave(S, me, req) {
+    var it = req.item || {}, oid = str(it.okrug);
+    if (!okrugMap(S)[oid]) throw fail('Округ не найден');
+    if (!inScope(S, me, oid)) throw fail('Нет прав на этот округ', 'FORBIDDEN');
+    var old = S.rows('Passports').filter(function (p) { return p.okrug === oid; })[0];
+    var rec = { okrug: oid, updated: nowMsk(), updatedBy: me.name };
+    PASSPORT_FIELDS.forEach(function (f) { rec[f] = str(it[f]).slice(0, 5000); });
+    if (old) S.update('Passports', rec); else S.insert('Passports', rec);
+    log(S, me, 'edit passport', oid);
+    return rec;
+  }
+
   function okrugSave(S, me, req) {
     var it = req.item || {}, o = okrugMap(S)[it.id];
     if (!o) throw fail('Округ не найден');
@@ -531,7 +547,7 @@ var CRM = (function () {
   var READ = { bootstrap: bootstrap, kmbList: kmbList, photos: photos, backups: backups, log: logList, exportAll: exportAll };
   var WRITE = {
     save: save, remove: remove, kmbBulk: kmbBulk, userSave: userSave, userDelete: userDelete,
-    changePassword: changePassword, okrugSave: okrugSave, planSave: planSave, importAll: importAll, backupNow: backupNow,
+    changePassword: changePassword, okrugSave: okrugSave, passportSave: passportSave, planSave: planSave, importAll: importAll, backupNow: backupNow,
     logout: function (S, me, req) { S.removeWhere('Sessions', function (s) { return s.token === req.token; }); return {}; }
   };
 
