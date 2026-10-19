@@ -175,6 +175,7 @@
 
   /* ---------- вход / выход ---------- */
   function renderLogin(msg) {
+    warmServer(); // пока человек вводит пароль, сервер успевает проснуться
     app.innerHTML =
       '<div class="login"><form class="card" id="loginForm">' +
       '<div class="brand" style="padding:0 0 18px"><div class="brand-mark">ЮАО</div><div><b>CRM кампании</b><span>Муниципальные выборы 2027</span></div></div>' +
@@ -199,24 +200,37 @@
 
   function logout(expired) {
     if (S.token && !expired) api('logout').catch(function () { });
-    S.token = ''; S.me = null; lsSet(TOKEN_KEY, '');
+    S.token = ''; S.me = null; lsSet(TOKEN_KEY, ''); clearCache();
     map = null;
     renderLogin(expired ? 'Сессия закончилась — войдите снова' : '');
   }
 
-  var loading = null;
+  var loading = null, lastLoad = 0, CACHE_KEY = 'crm-yuao-cache';
+  function applyData(d) {
+    S.me = d.me; S.okrugs = d.okrugs; S.plan = d.plan; S.users = d.users; S.credUrl = d.credUrl || '';
+    S.candidates = d.candidates; S.events = d.events; S.media = d.media || []; S.interviews = d.interviews || []; S.passports = d.passports || []; S.files = d.files || []; S.stats = d.stats;
+    if (!UI.month || campaignMonths().indexOf(UI.month) < 0) UI.month = defaultMonth();
+    if (!UI.evF.month) UI.evF.month = curMonth();
+  }
+  // Последние данные хранятся на устройстве: сайт открывается мгновенно, свежие данные подтягиваются в фоне
+  function readCache() {
+    if (DEMO) return null;
+    try { var c = JSON.parse(localStorage.getItem(CACHE_KEY) || 'null'); return c && c.token === S.token && c.data && c.data.me ? c.data : null; } catch (e) { return null; }
+  }
+  function writeCache(d) { if (DEMO) return; try { localStorage.setItem(CACHE_KEY, JSON.stringify({ token: S.token, at: Date.now(), data: d })); } catch (e) { } }
+  function clearCache() { try { localStorage.removeItem(CACHE_KEY); } catch (e) { } }
+
   function load() {
     if (loading) return loading; // не запускать вторую загрузку, пока идёт первая
+    if (!S.me) { var cached = readCache(); if (cached) { applyData(cached); render(); } }
     var first = !S.me;
     if (first) app.innerHTML = '<div class="loading">Загрузка данных…</div>';
     loading = api('bootstrap').then(function (d) {
       if (!d || !d.me) throw new Error('Сервер вернул пустой ответ');
-      S.me = d.me; S.okrugs = d.okrugs; S.plan = d.plan; S.users = d.users; S.credUrl = d.credUrl || '';
-      S.candidates = d.candidates; S.events = d.events; S.media = d.media || []; S.interviews = d.interviews || []; S.passports = d.passports || []; S.files = d.files || []; S.stats = d.stats;
-      if (!UI.month || campaignMonths().indexOf(UI.month) < 0) UI.month = defaultMonth();
-      if (!UI.evF.month) UI.evF.month = curMonth();
+      applyData(d); writeCache(d); lastLoad = Date.now();
       var y = window.scrollY, onMap = route() === 'map' && !first;
-      if (!onMap) { render(); window.scrollTo(0, y); } // карту не перерисовываем при фоновом обновлении
+      var typing = document.activeElement && /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName) && !document.querySelector('.modal-bg');
+      if (!onMap && !typing) { render(); window.scrollTo(0, y); } // не мешаем, если человек сейчас печатает в фильтре
     }).catch(function (e) {
       if (e.code === 'AUTH') return;
       if (!first) { toast('Не удалось обновить данные: ' + e.message, true); return; } // остаёмся на текущем экране
@@ -224,6 +238,12 @@
     }).then(function () { loading = null; });
     return loading;
   }
+  // Бесплатный сервер Google «засыпает»: пока сайт открыт, тихо будим его раз в 4 минуты
+  function warmServer() { if (!DEMO) callServer({ action: 'ping' }, 3).catch(function () { }); }
+  setInterval(function () { if (document.visibilityState === 'visible') warmServer(); }, 4 * 60 * 1000);
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'visible' && S.me && Date.now() - lastLoad > 60000) load(); // вернулись на вкладку — обновить
+  });
   function refresh() { return load(); }
 
   /* ---------- каркас ---------- */
