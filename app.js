@@ -36,11 +36,15 @@
   function myOkrugs() {
     if (!S.me) return [];
     if (S.me.role === 'admin') return S.okrugs.map(function (o) { return o.id; });
-    if (S.me.role === 'coord') return S.okrugs.filter(function (o) { return o.zone === S.me.zone; }).map(function (o) { return o.id; });
+    if (S.me.role === 'coord') return S.okrugs.filter(function (o) { return o.zone === S.me.zone || o.id === S.me.okrug; }).map(function (o) { return o.id; });
     return S.me.okrug ? [S.me.okrug] : [];
   }
   function canEdit(okrugId, entity) { return myOkrugs().indexOf(okrugId) >= 0 && !(entity === 'candidates' && S.me.role === 'member'); }
-  function internOf(okrugId) { return S.users.filter(function (u) { return u.role === 'intern' && u.okrug === okrugId && u.active; })[0]; }
+  // Стажёр округа: стажёр или координатор, который ведёт этот округ сам
+  function internOf(okrugId) {
+    var act = S.users.filter(function (u) { return u.active && u.okrug === okrugId; });
+    return act.filter(function (u) { return u.role === 'intern'; })[0] || act.filter(function (u) { return u.role === 'coord'; })[0];
+  }
   function coordOf(zone) { return S.users.filter(function (u) { return u.role === 'coord' && u.zone === zone && u.active; }); }
 
   function toast(msg, bad) {
@@ -255,7 +259,7 @@
     var nav = VIEWS.filter(function (x) { return !x[2] || isAdmin(); }).map(function (x) {
       return '<a href="#/' + x[0] + '" class="' + (v === x[0] ? 'on' : '') + '">' + icon(x[0]) + x[1] + '</a>';
     }).join('');
-    var where = S.me.role === 'coord' ? 'Зона ' + S.me.zone + ' · ' + CRM.ZONES[S.me.zone] : S.me.okrug ? okrugName(S.me.okrug) : 'Весь ЮАО';
+    var where = S.me.role === 'coord' ? 'Зона ' + S.me.zone + ' · ' + CRM.ZONES[S.me.zone] + (S.me.okrug ? ', стажёр ' + okrugName(S.me.okrug) : '') : S.me.okrug ? okrugName(S.me.okrug) : 'Весь ЮАО';
     app.innerHTML =
       '<div class="topbar"><button class="btn icon-only" id="menuBtn" aria-label="Меню">' + icon('menu') + '</button><b>' + esc(VIEWS.filter(function (x) { return x[0] === v; })[0][1]) + '</b></div>' +
       '<div class="layout"><aside class="side" id="side">' +
@@ -1343,7 +1347,7 @@
     var adm = isAdmin(), coord = S.me.role === 'coord', manage = canManageTeam();
     var order = { admin: 0, coord: 1, intern: 2, member: 3 };
     var list = S.users.slice().sort(function (a, b) { return order[a.role] - order[b.role] || (a.zone || '').localeCompare(b.zone || '') || a.name.localeCompare(b.name); });
-    var place = function (u) { return u.role === 'coord' ? u.zone + ' · ' + CRM.ZONES[u.zone] : u.okrug ? okrugName(u.okrug) : 'Весь ЮАО'; };
+    var place = function (u) { return u.role === 'coord' ? u.zone + ' · ' + CRM.ZONES[u.zone] + (u.okrug ? ', стажёр: ' + okrugName(u.okrug) : '') : u.okrug ? okrugName(u.okrug) : 'Весь ЮАО'; };
     var cnt = function (r) { return S.users.filter(function (u) { return u.role === r && u.active; }).length; };
     var mine = coord ? S.users.filter(function (u) { return canEditUser(u) && u.active; }).length : 0;
     box.innerHTML = '<div class="head"><div><h1>Команда</h1><div class="sub">Координаторов: ' + cnt('coord') + ' из 8, стажёров: ' + cnt('intern') + ' из 33' +
@@ -1383,6 +1387,7 @@
       }).map(function (r) { return '<option value="' + r + '"' + (r === u.role ? ' selected' : '') + '>' + CRM.ROLES[r] + '</option>'; }).join('') + '</select></label>' +
       '<label class="f"><span>Телефон</span><input class="input" name="phone" type="tel" value="' + esc(u.phone) + '"></label></div>' +
       '<label class="f" id="fZone"><span>Зона координатора</span><select class="input" name="zone">' + Object.keys(CRM.ZONES).map(function (z) { return '<option value="' + z + '"' + (z === u.zone ? ' selected' : '') + '>' + z + ' · ' + CRM.ZONES[z] + '</option>'; }).join('') + '</select></label>' +
+      '<label class="f" id="fCOkr"><span>Также ведёт округ как стажёр (необязательно)</span><select class="input" name="coordOkrug">' + okrugOptions(u.role === 'coord' ? u.okrug : '', { all: true, empty: '— нет' }) + '</select></label>' +
       '<label class="f" id="fOkr"><span>Избирательный округ</span><select class="input" name="okrug">' + okrugOptions(u.okrug, { all: S.me.role !== 'coord' }) + '</select></label>' +
       '<div class="row2"><label class="f"><span>Логин</span><input class="input" name="login" autocapitalize="none" value="' + esc(u.login) + '"></label>' +
       '<label class="f"><span>' + (isNew ? 'Пароль' : 'Новый пароль (пусто — не менять)') + '</span><div style="display:flex;gap:6px"><input class="input" name="password" value="' + pw + '"><button type="button" class="btn icon-only" id="gen" aria-label="Сгенерировать пароль" title="Сгенерировать пароль">' + icon('refresh') + '</button></div></label></div>' +
@@ -1393,6 +1398,7 @@
     var sync = function () {
       var r = f.role.value;
       $('#fZone', m.el).style.display = r === 'coord' ? '' : 'none';
+      $('#fCOkr', m.el).style.display = r === 'coord' && S.me.role === 'admin' ? '' : 'none';
       $('#fOkr', m.el).style.display = r === 'intern' || r === 'member' ? '' : 'none';
     };
     f.role.onchange = sync; sync();
@@ -1408,6 +1414,8 @@
     };
     $('[data-s]', m.el).onclick = function () {
       var it = formData(f); it.id = u.id;
+      if (it.role === 'coord') it.okrug = it.coordOkrug || '';
+      delete it.coordOkrug;
       it.login = String(it.login || '').trim().toLowerCase();
       // Быстрая проверка на месте — чтобы не ждать сервер ради очевидных ошибок
       var err = !/^[a-z0-9._-]{2,32}$/.test(it.login) ? 'Логин: 2–32 символа, латиница, цифры, точка, дефис'

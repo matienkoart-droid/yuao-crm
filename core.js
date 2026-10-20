@@ -174,7 +174,8 @@ var CRM = (function () {
   function scope(S, me) {
     var all = S.rows('Okrugs');
     if (me.role === 'admin') return all.map(function (o) { return o.id; });
-    if (me.role === 'coord') return all.filter(function (o) { return o.zone === me.zone; }).map(function (o) { return o.id; });
+    // координатор: своя зона + округ, который он сам ведёт как стажёр (если такой есть)
+    if (me.role === 'coord') return all.filter(function (o) { return o.zone === me.zone || o.id === me.okrug; }).map(function (o) { return o.id; });
     return me.okrug ? [me.okrug] : [];
   }
   function inScope(S, me, okrug) { return scope(S, me).indexOf(okrug) >= 0; }
@@ -411,7 +412,7 @@ var CRM = (function () {
     var o = rec.okrug && okrugMap(S)[rec.okrug];
     S.insert(CRED, {
       'Логин': rec.login, 'Пароль': password != null ? password : (old ? old['Пароль'] : ''), 'Имя': rec.name, 'Роль': ROLES[rec.role] || rec.role,
-      'Зона или округ': rec.role === 'coord' ? 'Зона ' + rec.zone + ' (' + ZONES[rec.zone] + ')' : o ? o.name : 'Весь ЮАО',
+      'Зона или округ': rec.role === 'coord' ? 'Зона ' + rec.zone + ' (' + ZONES[rec.zone] + ')' + (o ? ', стажёр: ' + o.name : '') : o ? o.name : 'Весь ЮАО',
       'Телефон': rec.phone, 'Доступ': truthy(rec.active) ? 'включён' : 'отключён',
       'Изменено': nowMsk().replace('T', ' ').slice(0, 16) + (note ? ', ' + note : ''), id: rec.id
     });
@@ -443,7 +444,8 @@ var CRM = (function () {
     if (u && u.id === me.id && (it.role !== 'admin' || !truthy(it.active))) throw fail('Нельзя снять права или отключить самого себя');
     var rec = u || { id: S.uuid(), created: nowMsk(), lastLogin: '' };
     rec.login = login; rec.name = str(it.name); rec.role = it.role; rec.phone = str(it.phone);
-    rec.okrug = (it.role === 'intern' || it.role === 'member') ? it.okrug : '';
+    // координатор может одновременно вести один округ как стажёр
+    rec.okrug = (it.role === 'intern' || it.role === 'member') ? it.okrug : (it.role === 'coord' && okr[it.okrug] ? it.okrug : '');
     rec.zone = it.role === 'coord' ? it.zone : (rec.okrug ? okr[rec.okrug].zone : '');
     rec.active = truthy(it.active) ? '1' : '';
     if (it.password) {
