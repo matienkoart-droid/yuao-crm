@@ -647,11 +647,19 @@ var CRM = (function () {
     try {
       req = req || {};
       if (req.action === 'ping') return { ok: true, data: { service: 'CRM ЮАО', version: VERSION } };
-      if (req.action === 'login') return { ok: true, data: S.lock(function () { seed(S); return login(S, req); }) };
+      // boot: 1 — вместе с ответом вернуть свежие данные сайта (bootstrap), чтобы не делать второй запрос
+      var withBoot = function (res, token) {
+        if (req.boot) { var u = auth(S, token); if (u) res.boot = bootstrap(S, u); }
+        return res;
+      };
+      if (req.action === 'login') {
+        var lg = S.lock(function () { seed(S); return login(S, req); });
+        return withBoot({ ok: true, data: lg }, lg.token);
+      }
       var me = auth(S, req.token);
       if (!me) return { ok: false, error: 'AUTH', message: 'Сессия закончилась — войдите снова' };
       if (READ[req.action]) return { ok: true, data: READ[req.action](S, me, req) };
-      if (WRITE[req.action]) return { ok: true, data: S.lock(function () { return WRITE[req.action](S, me, req); }) };
+      if (WRITE[req.action]) return withBoot({ ok: true, data: S.lock(function () { return WRITE[req.action](S, me, req); }) }, req.token);
       return { ok: false, error: 'ERR', message: 'Неизвестное действие: ' + req.action };
     } catch (e) {
       return { ok: false, error: e.code || 'ERR', message: e.message || String(e) };

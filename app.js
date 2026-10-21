@@ -102,6 +102,8 @@
 
   function api(action, data) {
     var req = Object.assign({ action: action, token: S.token }, data || {});
+    // Запись и вход: сервер сразу присылает свежие данные — второй запрос (bootstrap) не нужен
+    if (!READ_ACTIONS[action] && action !== 'logout') req.boot = 1;
     var p = DEMO
       ? new Promise(function (r) { setTimeout(function () { r(CRM.handle(demoStore, JSON.parse(JSON.stringify(req)))); }, 30); })
       : callServer(req, 1);
@@ -110,6 +112,8 @@
         if (res && res.error === 'AUTH' && action !== 'login') { logout(true); }
         var e = new Error((res && res.message) || 'Ошибка сервера'); e.code = res && res.error; throw e;
       }
+      if (action === 'login' && res.data && res.data.token) { S.token = res.data.token; lsSet(TOKEN_KEY, S.token); }
+      if (res.boot && res.boot.me) { applyData(res.boot); writeCache(res.boot); lastLoad = lastBoot = Date.now(); }
       return res.data;
     });
   }
@@ -209,7 +213,7 @@
       b.disabled = true; b.textContent = 'Входим…';
       api('login', { login: f.login.value, password: f.password.value }).then(function (d) {
         S.token = d.token; lsSet(TOKEN_KEY, d.token);
-        load();
+        if (S.me && Date.now() - lastBoot < 5000) { lastBoot = 0; render(); } else load();
       }).catch(function (err) {
         $('#loginErr').textContent = err.message; b.disabled = false; b.textContent = 'Войти';
       });
@@ -218,12 +222,12 @@
 
   function logout(expired) {
     if (S.token && !expired) api('logout').catch(function () { });
-    S.token = ''; S.me = null; lsSet(TOKEN_KEY, ''); clearCache();
+    S.token = ''; S.me = null; lsSet(TOKEN_KEY, ''); clearCache(); kmbCache = {};
     map = null;
     renderLogin(expired ? 'Сессия закончилась — войдите снова' : '');
   }
 
-  var loading = null, lastLoad = 0, CACHE_KEY = 'crm-yuao-cache';
+  var loading = null, lastLoad = 0, lastBoot = 0, CACHE_KEY = 'crm-yuao-cache';
   function applyData(d) {
     S.me = d.me; S.okrugs = d.okrugs; S.plan = d.plan; S.users = d.users; S.credUrl = d.credUrl || '';
     S.candidates = d.candidates; S.events = d.events; S.media = d.media || []; S.interviews = d.interviews || []; S.passports = d.passports || []; S.files = d.files || []; S.stats = d.stats; S.kmbD = d.kmbDistricts || {};
@@ -246,9 +250,7 @@
     loading = api('bootstrap').then(function (d) {
       if (!d || !d.me) throw new Error('Сервер вернул пустой ответ');
       applyData(d); writeCache(d); lastLoad = Date.now();
-      var y = window.scrollY, onMap = route() === 'map' && !first;
-      var typing = document.activeElement && /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName) && !document.querySelector('.modal-bg');
-      if (!onMap && !typing) { render(); window.scrollTo(0, y); } // не мешаем, если человек сейчас печатает в фильтре
+      repaint(first);
     }).catch(function (e) {
       if (e.code === 'AUTH') return;
       if (!first) { toast('Не удалось обновить данные: ' + e.message, true); return; } // остаёмся на текущем экране
@@ -262,7 +264,17 @@
   document.addEventListener('visibilitychange', function () {
     if (document.visibilityState === 'visible' && S.me && Date.now() - lastLoad > 60000) load(); // вернулись на вкладку — обновить
   });
-  function refresh() { return load(); }
+  // Перерисовать экран со свежими данными, не сбивая прокрутку и не мешая печатать в фильтре
+  function repaint(first) {
+    var y = window.scrollY, onMap = route() === 'map' && !first;
+    var typing = document.activeElement && /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName) && !document.querySelector('.modal-bg');
+    if (!onMap && !typing) { render(); window.scrollTo(0, y); }
+  }
+  // После записи свежие данные уже пришли в ответе сервера — просто перерисовываем
+  function refresh() {
+    if (Date.now() - lastBoot < 5000) { lastBoot = 0; repaint(false); return Promise.resolve(); }
+    return load();
+  }
 
   /* ---------- каркас ---------- */
   function route() { var v = (location.hash || '').replace(/^#\/?/, '') || 'dashboard'; return VIEWS.some(function (x) { return x[0] === v; }) ? v : 'dashboard'; }
@@ -1306,10 +1318,31 @@
       rows.map(function (r) { return row(r); }).join('') + (rows.length > 1 ? row(tot, true) : '') + '</tbody></table></div></div>';
   }
 
+  // Уже открытые страницы КМБ запоминаются (только в памяти вкладки): показываем сразу, с сервера обновляем в фоне
+  var kmbCache = {};
+  function kmbParams() { var F = UI.kmbF; return { q: F.q, district: F.district, okrug: F.okrug, offset: F.offset, limit: KMB_PAGE }; }
+  // Сохранили или удалили контакт — сразу поправить запомненные списки, не дожидаясь сервера
+  function patchKmb(rec, removedId) {
+    Object.keys(kmbCache).forEach(function (key) {
+      var c = kmbCache[key], p = c.p, d = c.d, i;
+      for (i = 0; i < d.items.length; i++) if (d.items[i].id === (rec ? rec.id : removedId)) break;
+      if (i < d.items.length) { if (rec) d.items[i] = rec; else { d.items.splice(i, 1); d.total--; } return; }
+      var kd = rec && (rec.okrug ? distId(rec.okrug) : rec.district);
+      if (rec && !p.offset && !p.q && (!p.district || p.district === kd) && (!p.okrug || p.okrug === rec.okrug)) { d.items.unshift(rec); d.total++; }
+    });
+  }
   function loadKmb() {
-    var F = UI.kmbF;
-    return api('kmbList', { q: F.q, district: F.district, okrug: F.okrug, offset: F.offset, limit: KMB_PAGE }).then(function (d) {
-      var box = $('#kmbList'); if (!box) return;
+    var p = kmbParams(), key = JSON.stringify(p);
+    if (kmbCache[key]) drawKmb(kmbCache[key].d);
+    else if ($('#kmbList') && $('#kmbList .tbl')) $('#kmbList').style.opacity = '.55';
+    return api('kmbList', p).then(function (d) {
+      kmbCache[key] = { p: p, d: d };
+      if (JSON.stringify(kmbParams()) === key) drawKmb(d); // пока ждали, фильтр могли сменить
+    }).catch(fail);
+  }
+  function drawKmb(d) {
+    var F = UI.kmbF, box = $('#kmbList'); if (!box) return;
+    box.style.opacity = '';
       $('#kmbSum').textContent = 'Найдено контактов: ' + fmt(d.total) + '. Только с согласием на обработку персональных данных.';
       if (!d.items.length) { box.innerHTML = '<div class="card empty">Контактов не найдено.</div>'; return; }
       box.innerHTML = '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>ФИО</th><th>Телефон</th><th>Адрес</th><th>Район / округ</th><th>Источник</th><th>Дата</th><th></th></tr></thead><tbody>' +
@@ -1322,7 +1355,6 @@
       $('#kPrev').onclick = function () { F.offset = Math.max(0, F.offset - KMB_PAGE); loadKmb(); };
       $('#kNext').onclick = function () { F.offset += KMB_PAGE; loadKmb(); };
       $all('tr[data-k]', box).forEach(function (tr) { tr.onclick = function () { editKmb(d.items.filter(function (k) { return k.id === tr.dataset.k; })[0]); }; });
-    }).catch(fail);
   }
 
   function editKmb(k) {
@@ -1346,12 +1378,12 @@
     var d = $('[data-d]', m.el);
     if (d) d.onclick = function () {
       confirmBox('Удалить контакт из КМБ?', 'Удалить').then(function (y) {
-        if (y) api('remove', { entity: 'kmb', id: k.id }).then(function () { m.close(); toast('Удалено'); refresh(); }).catch(fail);
+        if (y) api('remove', { entity: 'kmb', id: k.id }).then(function () { patchKmb(null, k.id); m.close(); toast('Удалено'); refresh(); }).catch(fail);
       });
     };
     $('[data-s]', m.el).onclick = function (ev) {
       var it = formData($('#kF', m.el)); it.id = k.id; busy(ev.target, true);
-      api('save', { entity: 'kmb', item: it }).then(function () { m.close(); toast('Сохранено'); refresh(); }).catch(function (er) { busy(ev.target, false); fail(er); });
+      api('save', { entity: 'kmb', item: it }).then(function (rec) { patchKmb(rec); m.close(); toast('Сохранено'); refresh(); }).catch(function (er) { busy(ev.target, false); fail(er); });
     };
   }
 
@@ -1377,7 +1409,7 @@
       var items = parse(); if (!items.length) return toast('Вставьте строки', true);
       busy(ev.target, true);
       api('kmbBulk', { items: items }).then(function (r) {
-        m.close();
+        kmbCache = {}; m.close();
         var msg = 'Добавлено: ' + r.added + (r.skipped.length ? ', пропущено: ' + r.skipped.length : '');
         if (r.skipped.length) modal('Итог импорта', '<p>' + msg + '</p><div class="tbl-wrap"><table class="tbl"><thead><tr><th>Строка</th><th>Причина</th></tr></thead><tbody>' + r.skipped.slice(0, 200).map(function (s) { return '<tr><td>' + s.row + '</td><td>' + esc(s.reason) + '</td></tr>'; }).join('') + '</tbody></table></div>');
         else toast(msg);
