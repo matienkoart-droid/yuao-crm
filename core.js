@@ -17,7 +17,7 @@ var CRM = (function () {
     Candidates: ['id', 'okrug', 'fio', 'description', 'budget', 'phone', 'status', 'hasPhoto', 'created', 'createdBy', 'updated'],
     Photos: ['id', 'data'],
     Events: ['id', 'okrug', 'type', 'date', 'title', 'address', 'contacts', 'status', 'notes', 'created', 'createdBy', 'updated'],
-    Kmb: ['id', 'okrug', 'fio', 'phone', 'address', 'source', 'eventId', 'consent', 'tags', 'comment', 'date', 'created', 'createdBy'],
+    Kmb: ['id', 'okrug', 'fio', 'phone', 'address', 'source', 'eventId', 'consent', 'tags', 'comment', 'date', 'created', 'createdBy', 'district'],
     Media: ['id', 'okrug', 'kind', 'network', 'title', 'url', 'subscribers', 'candidateId', 'owner', 'status', 'started', 'notes', 'created', 'createdBy', 'updated'],
     Interviews: ['id', 'okrug', 'fio', 'phone', 'date', 'time', 'place', 'interviewer', 'attended', 'verdict', 'comment', 'candidateId', 'created', 'createdBy', 'updated'],
     Plan: ['month', 'meetings', 'actions', 'kmb'],
@@ -180,6 +180,18 @@ var CRM = (function () {
   }
   function inScope(S, me, okrug) { return scope(S, me).indexOf(okrug) >= 0; }
 
+  /* ---------- районы ---------- */
+  var DISTRICT_NAMES = {}; DISTRICTS.forEach(function (d) { DISTRICT_NAMES[d[0]] = d[1]; });
+  function districtOf(okrugId) { return str(okrugId).replace(/-\d+$/, ''); }
+  // Район контакта КМБ: из округа, а если округ не указан — из поля district
+  function kmbDistrict(k) { return k.okrug ? districtOf(k.okrug) : str(k.district); }
+  // Контакт без округа доступен тем, у кого в зоне есть хотя бы один округ этого района
+  function kmbInScope(S, me, k) {
+    if (k.okrug) return inScope(S, me, k.okrug);
+    var d = str(k.district);
+    return !!d && scope(S, me).some(function (id) { return districtOf(id) === d; });
+  }
+
   function log(S, me, action, details) {
     S.insert('Log', { ts: nowMsk(), user: me ? me.login : '', action: action, details: str(details).slice(0, 500) });
   }
@@ -228,16 +240,29 @@ var CRM = (function () {
     return st;
   }
 
+  // КМБ по районам и месяцам: { danilovsky: { '2026-10': 12 } } — включая контакты без округа
+  function kmbByDistrict(S) {
+    var out = {};
+    DISTRICTS.forEach(function (d) { out[d[0]] = {}; });
+    S.rows('Kmb').forEach(function (k) {
+      var d = kmbDistrict(k); if (!out[d]) return;
+      var m = str(k.date).slice(0, 7);
+      out[d][m] = (out[d][m] || 0) + 1;
+    });
+    return out;
+  }
+
   /* ---------- проверка и сохранение записей ---------- */
   var ENTITIES = {
     candidates: { sheet: 'Candidates', fields: ['okrug', 'fio', 'description', 'budget', 'phone', 'status'] },
     events: { sheet: 'Events', fields: ['okrug', 'type', 'date', 'title', 'address', 'contacts', 'status', 'notes'] },
-    kmb: { sheet: 'Kmb', fields: ['okrug', 'fio', 'phone', 'address', 'source', 'eventId', 'consent', 'tags', 'comment', 'date'] },
+    kmb: { sheet: 'Kmb', fields: ['okrug', 'district', 'fio', 'phone', 'address', 'source', 'eventId', 'consent', 'tags', 'comment', 'date'] },
     media: { sheet: 'Media', fields: ['okrug', 'kind', 'network', 'title', 'url', 'subscribers', 'candidateId', 'owner', 'status', 'started', 'notes'] },
     interviews: { sheet: 'Interviews', fields: ['okrug', 'fio', 'phone', 'date', 'time', 'place', 'interviewer', 'attended', 'verdict', 'comment', 'candidateId'] }
   };
 
-  function canWrite(S, me, entity, okrug) {
+  function canWrite(S, me, entity, okrug, district) {
+    if (entity === 'kmb') return kmbInScope(S, me, { okrug: okrug, district: district });
     if (!inScope(S, me, okrug)) return false;
     if ((entity === 'candidates' || entity === 'interviews') && me.role === 'member') return false;
     return true;
@@ -246,7 +271,12 @@ var CRM = (function () {
   function clean(S, entity, item) {
     var def = ENTITIES[entity], o = {};
     def.fields.forEach(function (f) { o[f] = str(item[f]); });
-    if (!okrugMap(S)[o.okrug]) throw fail('Не выбран избирательный округ');
+    if (entity === 'kmb') {
+      // у контакта обязателен район; округ — если известен (тогда район берётся из него)
+      if (o.okrug && !okrugMap(S)[o.okrug]) throw fail('Неизвестный избирательный округ');
+      if (o.okrug) o.district = districtOf(o.okrug);
+      if (!DISTRICT_NAMES[o.district]) throw fail('Не выбран район');
+    } else if (!okrugMap(S)[o.okrug]) throw fail('Не выбран избирательный округ');
     if (entity === 'candidates') {
       if (!o.fio) throw fail('Укажите ФИО кандидата');
       o.budget = o.budget ? String(num(o.budget)) : '';
@@ -294,11 +324,11 @@ var CRM = (function () {
     var o = clean(S, entity, item);
     var old = item.id ? S.rows(def.sheet).filter(function (x) { return x.id === item.id; })[0] : null;
     if (item.id && !old) throw fail('Запись не найдена — возможно, её уже удалили');
-    if (old && !canWrite(S, me, entity, old.okrug)) throw fail('Нет прав на эту запись', 'FORBIDDEN');
-    if (!canWrite(S, me, entity, o.okrug)) throw fail('Нет прав на этот округ', 'FORBIDDEN');
+    if (old && !canWrite(S, me, entity, old.okrug, old.district)) throw fail('Нет прав на эту запись', 'FORBIDDEN');
+    if (!canWrite(S, me, entity, o.okrug, o.district)) throw fail('Нет прав на этот ' + (entity === 'kmb' && !o.okrug ? 'район' : 'округ'), 'FORBIDDEN');
     if (entity === 'kmb') {
       var dup = findKmbDuplicate(S, o.phone, old && old.id);
-      if (dup) throw fail('Этот телефон уже есть в КМБ (' + (okrugMap(S)[dup.okrug] || {}).name + ')', 'DUPLICATE');
+      if (dup) throw fail('Этот телефон уже есть в КМБ (' + ((okrugMap(S)[dup.okrug] || {}).name || DISTRICT_NAMES[kmbDistrict(dup)] || 'без района') + ')', 'DUPLICATE');
     }
     var rec;
     if (old) {
@@ -329,7 +359,7 @@ var CRM = (function () {
     if (!def) throw fail('Неизвестный раздел');
     var old = S.rows(def.sheet).filter(function (x) { return x.id === req.id; })[0];
     if (!old) return { removed: 0 };
-    if (!canWrite(S, me, req.entity, old.okrug)) throw fail('Нет прав на эту запись', 'FORBIDDEN');
+    if (!canWrite(S, me, req.entity, old.okrug, old.district)) throw fail('Нет прав на эту запись', 'FORBIDDEN');
     S.remove(def.sheet, old.id);
     if (req.entity === 'candidates') S.removeWhere('Photos', function (p) { return p.id === old.id; });
     log(S, me, 'delete ' + req.entity, old.id + ' ' + (old.fio || old.title || ''));
@@ -344,7 +374,7 @@ var CRM = (function () {
     items.forEach(function (it, i) {
       try {
         var o = clean(S, 'kmb', it);
-        if (!canWrite(S, me, 'kmb', o.okrug)) throw fail('нет прав на округ');
+        if (!canWrite(S, me, 'kmb', o.okrug, o.district)) throw fail('нет прав на ' + (o.okrug ? 'округ' : 'район'));
         var p = phoneKey(o.phone);
         if (p.length >= 10) { if (seen[p]) throw fail('телефон уже в базе'); seen[p] = 1; }
         o.id = S.uuid(); o.created = now; o.createdBy = me.id;
@@ -357,11 +387,12 @@ var CRM = (function () {
   }
 
   function kmbList(S, me, req) {
-    var sc = {}; scope(S, me).forEach(function (id) { sc[id] = 1; });
+    var sc = {}, scD = {}; scope(S, me).forEach(function (id) { sc[id] = 1; scD[districtOf(id)] = 1; });
     var q = str(req.q).toLowerCase(), qd = q.replace(/\D/g, '');
     var list = S.rows('Kmb').filter(function (k) {
-      if (!sc[k.okrug]) return false;
+      if (k.okrug ? !sc[k.okrug] : !scD[k.district]) return false;
       if (req.okrug && k.okrug !== req.okrug) return false;
+      if (req.district && kmbDistrict(k) !== req.district) return false;
       if (req.month && str(k.date).slice(0, 7) !== req.month) return false;
       if (!q) return true;
       return (k.fio + ' ' + k.address + ' ' + k.tags + ' ' + k.comment).toLowerCase().indexOf(q) >= 0 ||
@@ -370,6 +401,28 @@ var CRM = (function () {
     list.sort(function (a, b) { return a.created < b.created ? 1 : -1; });
     var off = Math.max(0, num(req.offset)), lim = Math.min(5000, num(req.limit) || 100);
     return { total: list.length, items: list.slice(off, off + lim) };
+  }
+
+  /* Разовая раскладка КМБ по районам по значению в колонке «адрес».
+     groups: [{ from: ['донской'], to: ['donskoy'] }, { from: ['печатники', 'южнопортовый'], to: [4 района] }] —
+     при нескольких районах контакты раздаются по кругу (поровну). Округ у таких контактов очищается. */
+  function kmbAssignDistricts(S, groups) {
+    var norm = function (v) { return str(v).toLowerCase().replace(/ё/g, 'е').trim(); };
+    var rule = {}, counts = {};
+    groups.forEach(function (g) {
+      g.to.forEach(function (d) { if (!DISTRICT_NAMES[d]) throw fail('Неизвестный район ' + d); });
+      var st = { to: g.to, i: 0 };
+      g.from.forEach(function (f) { rule[norm(f)] = st; });
+    });
+    var rows = S.rows('Kmb'), changed = 0;
+    rows.forEach(function (k) {
+      var st = rule[norm(k.address)]; if (!st) return;
+      k.district = st.to[st.i++ % st.to.length]; k.okrug = '';
+      counts[k.district] = (counts[k.district] || 0) + 1; changed++;
+    });
+    if (changed) S.replaceAll('Kmb', rows);
+    log(S, null, 'kmb districts', changed + ' контактов: ' + JSON.stringify(counts));
+    return { changed: changed, byDistrict: counts };
   }
 
   function photos(S, me, req) {
@@ -397,6 +450,7 @@ var CRM = (function () {
       files: S.rows('Files').map(function (f) { return pick(f, ['id', 'okrug', 'name', 'mime', 'size', 'created', 'createdBy', 'authorName']); }),
       interviews: me.role === 'member' ? [] : S.rows('Interviews').filter(function (i) { return sc[i.okrug]; }),
       stats: stats(S),
+      kmbDistricts: kmbByDistrict(S),
       server: S.kind,
       credUrl: full && S.credUrl ? S.credUrl() : ''
     };
@@ -615,7 +669,7 @@ var CRM = (function () {
   }
 
   return {
-    VERSION: VERSION, CAMPAIGN: CAMPAIGN, MEDIA_KINDS: MEDIA_KINDS, NETWORKS: NETWORKS, MEDIA_PLAN: MEDIA_PLAN, SCHEMA: SCHEMA, ROLES: ROLES, ZONES: ZONES, CAND_STATUSES: CAND_STATUSES, EVENT_TYPES: EVENT_TYPES,
+    kmbAssignDistricts: kmbAssignDistricts, DISTRICT_NAMES: DISTRICT_NAMES, VERSION: VERSION, CAMPAIGN: CAMPAIGN, MEDIA_KINDS: MEDIA_KINDS, NETWORKS: NETWORKS, MEDIA_PLAN: MEDIA_PLAN, SCHEMA: SCHEMA, ROLES: ROLES, ZONES: ZONES, CAND_STATUSES: CAND_STATUSES, EVENT_TYPES: EVENT_TYPES,
     CRED: CRED, credWrite: credWrite, defaultOkrugs: defaultOkrugs, defaultPlan: defaultPlan, sha256: sha256, _hash: hashPassword, handle: handle, auth: auth, createAdmin: createAdmin, seed: seed
   };
 })();

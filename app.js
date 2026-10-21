@@ -11,8 +11,8 @@
     if (!demoStore.rows('Users').length) CRM.createAdmin(demoStore, 'admin', 'admin123');
   }
 
-  var S = { token: lsGet(TOKEN_KEY), me: null, okrugs: [], plan: [], users: [], candidates: [], events: [], media: [], interviews: [], passports: [], files: [], stats: {}, photos: {}, geo: null };
-  var UI = { pOkrug: '', month: null, mode: 'month', layer: 'traffic', uikF: { q: '', district: '', okrug: '' }, selOkrug: null, candF: { okrug: '', status: '', q: '' }, evF: { month: '', okrug: '', status: '' }, ivF: { okrug: '', status: 'upcoming' }, mdF: { kind: '', network: '', okrug: '', q: '' }, kmbF: { q: '', okrug: '', offset: 0 } };
+  var S = { token: lsGet(TOKEN_KEY), me: null, okrugs: [], plan: [], users: [], candidates: [], events: [], media: [], interviews: [], passports: [], files: [], stats: {}, kmbD: {}, photos: {}, geo: null };
+  var UI = { pOkrug: '', month: null, mode: 'month', layer: 'traffic', uikF: { q: '', district: '', okrug: '' }, selOkrug: null, candF: { okrug: '', status: '', q: '' }, evF: { month: '', okrug: '', status: '' }, ivF: { okrug: '', status: 'upcoming' }, mdF: { kind: '', network: '', okrug: '', q: '' }, kmbF: { q: '', district: '', okrug: '', offset: 0 } };
   var app = document.getElementById('app');
   var map = null, geoLayer = null, labelLayer = null, districtLayer = null;
 
@@ -39,6 +39,20 @@
     if (S.me.role === 'coord') return S.okrugs.filter(function (o) { return o.zone === S.me.zone || o.id === S.me.okrug; }).map(function (o) { return o.id; });
     return S.me.okrug ? [S.me.okrug] : [];
   }
+  // Районы: id района = id округа без номера (danilovsky-3 → danilovsky)
+  function distId(oid) { return String(oid || '').replace(/-\d+$/, ''); }
+  function districtName(d) { return CRM.DISTRICT_NAMES[d] || '—'; }
+  function myDistricts() { var seen = {}; return myOkrugs().map(distId).filter(function (d) { return CRM.DISTRICT_NAMES[d] && !seen[d] && (seen[d] = 1); }); }
+  function districtOptions(sel, empty) {
+    return (empty ? '<option value="">' + esc(empty) + '</option>' : '') + myDistricts().map(function (d) { return '<option value="' + d + '"' + (d === sel ? ' selected' : '') + '>' + esc(districtName(d)) + '</option>'; }).join('');
+  }
+  // Округа района (из доступных пользователю) для выбора в КМБ; первая строка — «не знаю»
+  function districtOkrugOptions(d, sel, empty) {
+    return '<option value="">' + esc(empty || '— округ не знаю') + '</option>' + myOkrugs().filter(function (id) { return distId(id) === d; }).map(function (id) {
+      return '<option value="' + id + '"' + (id === sel ? ' selected' : '') + '>' + esc(okrugName(id)) + '</option>';
+    }).join('');
+  }
+  function kmbPlace(k) { return k.okrug ? okrugName(k.okrug) : districtName(k.district) + ' · округ не указан'; }
   function canEdit(okrugId, entity) { return myOkrugs().indexOf(okrugId) >= 0 && !(entity === 'candidates' && S.me.role === 'member'); }
   // Стажёр округа: стажёр или координатор, который ведёт этот округ сам
   function internOf(okrugId) {
@@ -212,7 +226,7 @@
   var loading = null, lastLoad = 0, CACHE_KEY = 'crm-yuao-cache';
   function applyData(d) {
     S.me = d.me; S.okrugs = d.okrugs; S.plan = d.plan; S.users = d.users; S.credUrl = d.credUrl || '';
-    S.candidates = d.candidates; S.events = d.events; S.media = d.media || []; S.interviews = d.interviews || []; S.passports = d.passports || []; S.files = d.files || []; S.stats = d.stats;
+    S.candidates = d.candidates; S.events = d.events; S.media = d.media || []; S.interviews = d.interviews || []; S.passports = d.passports || []; S.files = d.files || []; S.stats = d.stats; S.kmbD = d.kmbDistricts || {};
     if (!UI.month || campaignMonths().indexOf(UI.month) < 0) UI.month = defaultMonth();
     if (!UI.evF.month) UI.evF.month = curMonth();
   }
@@ -347,6 +361,17 @@
     return r;
   }
 
+  // Факт КМБ по районам (с контактами без округа): за месяц m или нарастающим итогом
+  function kmbFactD(pred, m, mode) {
+    var n = 0;
+    Object.keys(S.kmbD).forEach(function (d) {
+      if (!pred(d)) return;
+      Object.keys(S.kmbD[d]).forEach(function (x) { if (mode === 'cum' ? x <= m : x === m) n += S.kmbD[d][x]; });
+    });
+    return n;
+  }
+  function zoneOfDistrict(d) { var o = S.okrugs.filter(function (x) { return distId(x.id) === d; })[0]; return o ? o.zone : ''; }
+
   function viewDashboard(box) {
     var m = UI.month, all = S.okrugs, mode = UI.mode;
     var ev = {}; all.forEach(function (o) { ev[o.id] = evalOkrug(o.id, m, mode); });
@@ -355,7 +380,7 @@
     list.forEach(function (e) { lights[e.color]++; });
     var date = refDate(m);
     var coords = Object.keys(CRM.ZONES).filter(function (z) { return coordOf(z).length; }).length;
-    var kmbAll = all.reduce(function (s2, o) { return s2 + kmbTotal(o.id); }, 0);
+    var kmbAll = kmbFactD(function () { return true; }, '9999-12', 'cum');
     var kmbTarget = S.plan.reduce(function (s2, x) { return s2 + +x.kmb; }, 0) * all.length;
     var kpi = function (l, v, of, sub, r) {
       return '<div class="card kpi"><div class="l">' + l + '</div><div class="v">' + v + (of != null ? ' <span class="muted">/ ' + of + '</span>' : '') + '</div>' +
@@ -363,6 +388,7 @@
     };
     var needNow = function (x) { return date && x.now < x.plan ? 'сейчас нужно ' + fmt(x.now) : ''; };
     var cand = sumItems(list, 'cand'), meet = sumItems(list, 'meet'), act = sumItems(list, 'act'), kmb = sumItems(list, 'kmb');
+    kmb.fact = kmbFactD(function () { return true; }, m, mode);
     var interns = sumItems(list, 'intern');
 
     var zones = Object.keys(CRM.ZONES).map(function (z) {
@@ -370,6 +396,7 @@
       var sc = zl.filter(function (e) { return e.ratio != null; });
       var ratio = sc.length ? sc.reduce(function (s2, e) { return s2 + e.ratio; }, 0) / sc.length : null;
       var c = sumItems(zl, 'cand'), i = sumItems(zl, 'intern'), me = sumItems(zl, 'meet'), ac = sumItems(zl, 'act'), k = sumItems(zl, 'kmb');
+      k.fact = kmbFactD(function (d) { return zoneOfDistrict(d) === z; }, m, mode);
       var co = coordOf(z).map(function (u) { return esc(u.name); }).join(', ') || '<span class="pill bad">координатора нет</span>';
       return '<tr><td><span class="dot c-' + colorOf(ratio) + '"></span> <b>' + z + '</b> ' + CRM.ZONES[z] + '<div class="sub">' + co + '</div></td>' +
         '<td class="num">' + (ratio == null ? '—' : Math.round(ratio * 100) + '%') + '</td>' +
@@ -379,7 +406,7 @@
 
     var cum = 0, cumPlan = 0, maxv = 1;
     var rows = S.plan.map(function (pl) {
-      var f = 0; all.forEach(function (o) { f += (S.stats[o.id] || { kmb: {} }).kmb[pl.month] || 0; });
+      var f = kmbFactD(function () { return true; }, pl.month, 'month');
       cum += f; cumPlan += +pl.kmb * all.length; maxv = Math.max(maxv, cumPlan, cum);
       return { m: pl.month, f: f, plan: +pl.kmb * all.length, cum: cum, cumPlan: cumPlan };
     });
@@ -1232,30 +1259,63 @@
     var F = UI.kmbF;
     box.innerHTML = '<div class="head"><div><h1>КМБ — контактно-мобилизационная база</h1><div class="sub" id="kmbSum">Загрузка…</div></div><div class="tools">' +
       '<input class="input" id="kq" placeholder="ФИО, телефон, адрес" value="' + esc(F.q) + '">' +
-      '<select class="input" id="ko">' + okrugOptions(F.okrug, { empty: 'Все мои округа' }) + '</select>' +
+      '<select class="input" id="kd">' + districtOptions(F.district, 'Все районы') + '</select>' +
+      '<select class="input" id="ko"' + (F.district ? '' : ' hidden') + '>' + districtOkrugOptions(F.district, F.okrug, 'Все округа района') + '</select>' +
       (myOkrugs().length ? '<button class="btn" id="kImp">' + icon('upload') + 'Импорт</button><button class="btn" id="kExp">' + icon('download') + 'CSV</button><button class="btn primary" id="kAdd">' + icon('plus') + 'Контакт</button>' : '') +
-      '</div></div><div id="kmbList"><div class="card empty">Загрузка…</div></div>';
+      '</div></div>' + kmbDistrictPlan() + '<div id="kmbList"><div class="card empty">Загрузка…</div></div>';
     var t;
     $('#kq').oninput = function (e) { clearTimeout(t); t = setTimeout(function () { F.q = e.target.value; F.offset = 0; loadKmb(); }, 300); };
     $('#ko').onchange = function (e) { F.okrug = e.target.value; F.offset = 0; loadKmb(); };
+    $('#kd').onchange = function (e) {
+      F.district = e.target.value; F.okrug = ''; F.offset = 0;
+      $('#ko').innerHTML = districtOkrugOptions(F.district, '', 'Все округа района'); $('#ko').hidden = !F.district;
+      loadKmb();
+    };
+    $all('tr[data-dist]', box).forEach(function (tr) { tr.onclick = function () { $('#kd').value = tr.dataset.dist; $('#kd').onchange({ target: $('#kd') }); }; });
     if ($('#kAdd')) {
-      $('#kAdd').onclick = function () { editKmb({ okrug: F.okrug || myOkrugs()[0], date: todayMsk(), consent: '1', source: 'Встреча' }); };
+      $('#kAdd').onclick = function () { editKmb({ district: F.district || myDistricts()[0], okrug: F.okrug, date: todayMsk(), consent: '1', source: 'Встреча' }); };
       $('#kImp').onclick = importKmb;
       $('#kExp').onclick = exportKmb;
     }
     loadKmb();
   }
 
+  // План КМБ по районам: план на округ в месяц × число округов района
+  function kmbDistrictPlan() {
+    var list = myDistricts(); if (!list.length) return '';
+    var cm = curMonth(), tot = { f: 0, fm: 0, pm: 0, now: 0, full: 0 };
+    var rows = list.map(function (d) {
+      var n = S.okrugs.filter(function (o) { return distId(o.id) === d; }).length, st = S.kmbD[d] || {};
+      var f = 0; Object.keys(st).forEach(function (x) { f += st[x]; });
+      var pm = 0, now = 0, full = 0;
+      S.plan.forEach(function (p) { full += p.kmb * n; now += p.kmb * n * paceFactor(p.month); if (p.month === cm) pm = p.kmb * n; });
+      var r = { d: d, n: n, f: f, fm: st[cm] || 0, pm: pm, now: Math.round(now), full: full };
+      ['f', 'fm', 'pm', 'now', 'full'].forEach(function (k) { tot[k] += r[k]; });
+      return r;
+    });
+    var row = function (r, total) {
+      var c = r.now > 0 ? colorOf(r.f / r.now) : 'grey', pct = r.full ? Math.round(r.f / r.full * 100) : 0;
+      return '<tr' + (total ? ' class="sel"' : ' class="click" data-dist="' + r.d + '"') + '><td>' + (total ? '<b>Итого</b>' : '<b>' + esc(districtName(r.d)) + '</b><div class="sub">' + r.n + ' ' + (r.n === 1 ? 'округ' : r.n < 5 ? 'округа' : 'округов') + '</div>') + '</td>' +
+        '<td class="num"><b>' + fmt(r.f) + '</b></td><td class="num">' + fmt(r.fm) + (r.pm ? ' <span class="muted">/ ' + fmt(r.pm) + '</span>' : '') + '</td>' +
+        '<td class="num">' + (r.now ? fmt(r.now) : '<span class="muted">—</span>') + '</td><td class="num">' + fmt(r.full) + '</td>' +
+        '<td style="min-width:140px"><div class="bar"><i class="' + c + '" style="width:' + Math.min(100, pct) + '%"></i></div><div class="sub">' + pct + '% плана к ЕДГ' + (r.now ? ' · к сегодня ' + Math.round(r.f / r.now * 100) + '%' : '') + '</div></td></tr>';
+    };
+    var first = S.plan.length ? S.plan[0].month : '';
+    return '<div class="card" style="margin-bottom:14px"><h2>План КМБ по районам</h2><div class="sub" style="margin-bottom:8px">Учитываются все контакты района, в том числе без округа. План — ' + (S.plan[0] ? fmt(S.plan[0].kmb) + '–' + fmt(Math.max.apply(null, S.plan.map(function (p) { return +p.kmb; }))) : '') + ' контактов на округ в месяц' + (first > cm ? ', отсчёт плана с ' + dateRu(first + '-01') : '') + '. Нажмите на район, чтобы увидеть его контакты.</div>' +
+      '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>Район</th><th class="num">Контактов</th><th class="num">' + esc(monthName(cm)) + ' / план</th><th class="num">План к сегодня</th><th class="num">План к ЕДГ</th><th>Выполнение</th></tr></thead><tbody>' +
+      rows.map(function (r) { return row(r); }).join('') + (rows.length > 1 ? row(tot, true) : '') + '</tbody></table></div></div>';
+  }
+
   function loadKmb() {
     var F = UI.kmbF;
-    return api('kmbList', { q: F.q, okrug: F.okrug, offset: F.offset, limit: KMB_PAGE }).then(function (d) {
+    return api('kmbList', { q: F.q, district: F.district, okrug: F.okrug, offset: F.offset, limit: KMB_PAGE }).then(function (d) {
       var box = $('#kmbList'); if (!box) return;
       $('#kmbSum').textContent = 'Найдено контактов: ' + fmt(d.total) + '. Только с согласием на обработку персональных данных.';
       if (!d.items.length) { box.innerHTML = '<div class="card empty">Контактов не найдено.</div>'; return; }
-      box.innerHTML = '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>ФИО</th><th>Телефон</th><th>Адрес</th><th>Округ</th><th>Источник</th><th>Дата</th><th></th></tr></thead><tbody>' +
+      box.innerHTML = '<div class="tbl-wrap"><table class="tbl"><thead><tr><th>ФИО</th><th>Телефон</th><th>Адрес</th><th>Район / округ</th><th>Источник</th><th>Дата</th><th></th></tr></thead><tbody>' +
         d.items.map(function (k) {
           return '<tr class="click" data-k="' + k.id + '"><td><b>' + esc(k.fio || '—') + '</b>' + (k.tags ? '<div class="sub">' + esc(k.tags) + '</div>' : '') + '</td><td class="nowrap">' + esc(k.phone) + '</td><td>' + esc(k.address) + '</td>' +
-            '<td>' + esc(okrugName(k.okrug)) + '</td><td>' + esc(k.source) + '</td><td class="nowrap">' + dateRu(k.date) + '</td><td>' + (k.consent ? '' : '<span class="pill warn" title="Нет отметки о согласии">без согласия</span>') + '</td></tr>';
+            '<td>' + esc(kmbPlace(k)) + '</td><td>' + esc(k.source) + '</td><td class="nowrap">' + dateRu(k.date) + '</td><td>' + (k.consent ? '' : '<span class="pill warn" title="Нет отметки о согласии">без согласия</span>') + '</td></tr>';
         }).join('') + '</tbody></table></div>' +
         '<div style="display:flex;gap:8px;align-items:center;justify-content:flex-end;margin-top:10px"><span class="sub">' + (F.offset + 1) + '–' + Math.min(F.offset + KMB_PAGE, d.total) + ' из ' + fmt(d.total) + '</span>' +
         '<button class="btn icon-only" id="kPrev" aria-label="Назад"' + (F.offset ? '' : ' disabled') + '>' + icon('left') + '</button><button class="btn icon-only" id="kNext" aria-label="Вперёд"' + (F.offset + KMB_PAGE < d.total ? '' : ' disabled') + '>' + icon('right') + '</button></div>';
@@ -1266,20 +1326,23 @@
   }
 
   function editKmb(k) {
-    var evs = S.events.filter(function (e) { return e.okrug === k.okrug; }).sort(function (a, b) { return a.date < b.date ? 1 : -1; }).slice(0, 60);
+    var dist = k.okrug ? distId(k.okrug) : (k.district || myDistricts()[0]);
+    var evs = S.events.filter(function (e) { return distId(e.okrug) === dist; }).sort(function (a, b) { return a.date < b.date ? 1 : -1; }).slice(0, 60);
     var m = modal(k.id ? 'Контакт' : 'Новый контакт',
       '<form id="kF"><label class="f"><span>ФИО</span><input class="input" name="fio" value="' + esc(k.fio) + '"></label>' +
       '<div class="row2"><label class="f"><span>Телефон</span><input class="input" name="phone" type="tel" value="' + esc(k.phone) + '"></label>' +
       '<label class="f"><span>Дата контакта</span><input class="input" name="date" type="date" value="' + esc(k.date) + '"></label></div>' +
       '<label class="f"><span>Адрес (улица, дом)</span><input class="input" name="address" value="' + esc(k.address) + '"></label>' +
-      '<div class="row2"><label class="f"><span>Округ</span><select class="input" name="okrug">' + okrugOptions(k.okrug) + '</select></label>' +
-      '<label class="f"><span>Источник</span><select class="input" name="source">' + SOURCES.map(function (s) { return '<option' + (s === k.source ? ' selected' : '') + '>' + s + '</option>'; }).join('') + '</select></label></div>' +
+      '<div class="row2"><label class="f"><span>Район</span><select class="input" name="district">' + districtOptions(dist) + '</select></label>' +
+      '<label class="f"><span>Округ (если знаете)</span><select class="input" name="okrug">' + districtOkrugOptions(dist, k.okrug) + '</select></label></div>' +
+      '<label class="f"><span>Источник</span><select class="input" name="source">' + SOURCES.map(function (s) { return '<option' + (s === k.source ? ' selected' : '') + '>' + s + '</option>'; }).join('') + '</select></label>' +
       '<label class="f"><span>Мероприятие (необязательно)</span><select class="input" name="eventId"><option value="">—</option>' + evs.map(function (e) { return '<option value="' + e.id + '"' + (e.id === k.eventId ? ' selected' : '') + '>' + dateRu(e.date) + ' · ' + esc(e.title || CRM.EVENT_TYPES[e.type]) + '</option>'; }).join('') + '</select></label>' +
       '<label class="f"><span>Метки (через запятую)</span><input class="input" name="tags" placeholder="волонтёр, пенсионер, родитель" value="' + esc(k.tags) + '"></label>' +
       '<label class="f"><span>Комментарий</span><textarea class="input" name="comment">' + esc(k.comment) + '</textarea></label>' +
       '<label class="check"><input type="checkbox" name="consent"' + (k.consent ? ' checked' : '') + '> Получено согласие на обработку персональных данных</label></form>',
       (k.id ? '<button class="btn danger left" data-d>Удалить</button>' : '') + '<button class="btn" data-c>Отмена</button><button class="btn primary" data-s>Сохранить</button>');
     $('[data-c]', m.el).onclick = m.close;
+    $('[name=district]', m.el).onchange = function (e) { $('[name=okrug]', m.el).innerHTML = districtOkrugOptions(e.target.value, ''); };
     var d = $('[data-d]', m.el);
     if (d) d.onclick = function () {
       confirmBox('Удалить контакт из КМБ?', 'Удалить').then(function (y) {
@@ -1295,17 +1358,19 @@
   function importKmb() {
     var m = modal('Импорт контактов',
       '<p class="small" style="margin-top:0">Скопируйте строки из Excel или Google Таблицы и вставьте ниже. Порядок колонок: <b>ФИО · телефон · адрес · комментарий</b>. Дубли по телефону пропускаются автоматически.</p>' +
-      '<div class="row2"><label class="f"><span>Округ</span><select class="input" id="iO">' + okrugOptions(UI.kmbF.okrug || myOkrugs()[0]) + '</select></label>' +
-      '<label class="f"><span>Источник</span><select class="input" id="iS">' + SOURCES.map(function (s) { return '<option>' + s + '</option>'; }).join('') + '</select></label></div>' +
+      '<div class="row2"><label class="f"><span>Район</span><select class="input" id="iR">' + districtOptions(UI.kmbF.district || myDistricts()[0]) + '</select></label>' +
+      '<label class="f"><span>Округ (если знаете)</span><select class="input" id="iO">' + districtOkrugOptions(UI.kmbF.district || myDistricts()[0], UI.kmbF.okrug) + '</select></label></div>' +
+      '<label class="f"><span>Источник</span><select class="input" id="iS">' + SOURCES.map(function (s) { return '<option>' + s + '</option>'; }).join('') + '</select></label>' +
       '<label class="f"><span>Дата контактов</span><input class="input" type="date" id="iD" value="' + todayMsk() + '"></label>' +
       '<label class="f"><span>Строки</span><textarea class="input" id="iT" rows="10" placeholder="Иванов Иван Иванович\t+7 999 123-45-67\tул. Подольских Курсантов, 4"></textarea></label>' +
       '<label class="check"><input type="checkbox" id="iC" checked> У всех контактов есть согласие на обработку персональных данных</label><div class="sub" id="iInfo"></div>',
       '<button class="btn" data-c>Отмена</button><button class="btn primary" data-s>Импортировать</button>', true);
     var parse = function () {
       return $('#iT', m.el).value.split(/\r?\n/).map(function (l) { return l.split(/\t|;/); }).filter(function (c) { return c.join('').trim(); }).map(function (c) {
-        return { fio: (c[0] || '').trim(), phone: (c[1] || '').trim(), address: (c[2] || '').trim(), comment: (c[3] || '').trim(), okrug: $('#iO', m.el).value, source: $('#iS', m.el).value, date: $('#iD', m.el).value, consent: $('#iC', m.el).checked };
+        return { fio: (c[0] || '').trim(), phone: (c[1] || '').trim(), address: (c[2] || '').trim(), comment: (c[3] || '').trim(), district: $('#iR', m.el).value, okrug: $('#iO', m.el).value, source: $('#iS', m.el).value, date: $('#iD', m.el).value, consent: $('#iC', m.el).checked };
       });
     };
+    $('#iR', m.el).onchange = function (e) { $('#iO', m.el).innerHTML = districtOkrugOptions(e.target.value, ''); };
     $('#iT', m.el).oninput = function () { $('#iInfo', m.el).textContent = 'Строк к импорту: ' + parse().length; };
     $('[data-c]', m.el).onclick = m.close;
     $('[data-s]', m.el).onclick = function (ev) {
@@ -1330,11 +1395,11 @@
   }
   function exportKmb() {
     var F = UI.kmbF;
-    api('kmbList', { q: F.q, okrug: F.okrug, offset: 0, limit: 5000 }).then(function (d) {
-      var head = ['ФИО', 'Телефон', 'Адрес', 'Округ', 'Источник', 'Дата', 'Метки', 'Комментарий', 'Согласие'];
-      var lines = [head.join(';')].concat(d.items.map(function (k) { return [k.fio, k.phone, k.address, okrugName(k.okrug), k.source, k.date, k.tags, k.comment, k.consent ? 'да' : 'нет'].map(csvCell).join(';'); }));
+    api('kmbList', { q: F.q, district: F.district, okrug: F.okrug, offset: 0, limit: 5000 }).then(function (d) {
+      var head = ['ФИО', 'Телефон', 'Адрес', 'Район', 'Округ', 'Источник', 'Дата', 'Метки', 'Комментарий', 'Согласие'];
+      var lines = [head.join(';')].concat(d.items.map(function (k) { return [k.fio, k.phone, k.address, districtName(k.okrug ? distId(k.okrug) : k.district), k.okrug ? okrugName(k.okrug) : '', k.source, k.date, k.tags, k.comment, k.consent ? 'да' : 'нет'].map(csvCell).join(';'); }));
       download('КМБ_' + todayMsk() + '.csv', '﻿' + lines.join('\r\n'), 'text/csv;charset=utf-8');
-      if (d.total > d.items.length) toast('Выгружено ' + d.items.length + ' из ' + d.total + ' — сузьте фильтр', true);
+      if (d.total > d.items.length) toast('Загружено ' + d.items.length + ' из ' + d.total + ' — сузьте фильтр', true);
     }).catch(fail);
   }
 
@@ -1479,7 +1544,7 @@
       '<div class="card"><h2>1. Основное хранилище</h2><p class="small">' + (DEMO ? 'Сейчас демо-режим: данные только в этом браузере. Подключите Google Таблицу по инструкции — тогда они будут на сервере.' : 'Все данные лежат в Google Таблице, отдельно от сайта. Обновления сайта их не затрагивают. У Таблицы есть своя история версий: Файл → История версий.') + '</p></div>' +
       '<div class="card"><h2>2. Ночные копии таблицы</h2><p class="small">Каждую ночь в 3:00 сервер сам делает полную копию Таблицы в папку «CRM ЮАО — резервные копии» на Google Диске и хранит последние 60.</p>' +
       (DEMO ? '' : '<button class="btn" id="bNow">Сделать копию сейчас</button> <button class="btn" id="bList">Показать копии</button><div id="bOut" style="margin-top:10px"></div>') + '</div>' +
-      '<div class="card"><h2>3. Файл на ваш компьютер</h2><p class="small">Полная выгрузка всех разделов (включая фото и пароли в зашифрованном виде) одним файлом. Храните его в надёжном месте — в нём персональные данные КМБ.</p><button class="btn primary" id="bExp">Скачать копию (.json)</button></div>' +
+      '<div class="card"><h2>3. Файл на ваш компьютер</h2><p class="small">Полная загрузка всех разделов (включая фото и пароли в зашифрованном виде) одним файлом. Храните его в надёжном месте — в нём персональные данные КМБ.</p><button class="btn primary" id="bExp">Скачать копию (.json)</button></div>' +
       '<div class="card"><h2>4. Восстановление</h2><p class="small">Заменяет все данные содержимым файла копии. Перед восстановлением сделайте свежую копию.</p><label class="btn danger">Восстановить из файла<input type="file" accept=".json,application/json" id="bImp" hidden></label></div>' +
       '</div>' +
       (DEMO ? '<div class="card" style="margin-bottom:14px"><h2>Демо-данные</h2><p class="small">Заполнить систему вымышленными стажёрами, кандидатами, мероприятиями и контактами, чтобы посмотреть карту и сводку в работе.</p><button class="btn" id="dFill">Заполнить демо-данными</button> <button class="btn danger" id="dWipe">Очистить всё</button></div>' : '') +
